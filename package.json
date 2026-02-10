@@ -3,7 +3,6 @@
   "name": "pt-board",
   "version": "1.0.0",
   "description": "Physical Therapy Office Task Management System",
-  "main": "index.tsx",
   "scripts": {
     "start": "parcel index.html",
     "build": "parcel build index.html"
