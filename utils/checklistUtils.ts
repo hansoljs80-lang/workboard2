@@ -36,19 +36,41 @@ export const getChecklistProgress = (text: string) => {
 
 /**
  * Toggles the checklist item status at a specific line index.
- * Returns the new full description string.
+ * Updated: Improved regex to handle completion text safely.
  */
-export const toggleChecklistItem = (text: string, targetLineIndex: number): string => {
+export const toggleChecklistItem = (
+  text: string, 
+  targetLineIndex: number, 
+  completedByText?: string // Optional: " (수행: 홍길동)"
+): string => {
   const lines = text.split('\n');
   if (targetLineIndex < 0 || targetLineIndex >= lines.length) return text;
 
   const line = lines[targetLineIndex];
   const trimmed = line.trim();
 
+  // Regex to find " (수행: ...)" pattern anywhere at the end of the content
+  // Matches: space + (수행: + any chars + ) + end of string/line
+  const completionRegex = /\s*\(수행: [^)]+\)$/;
+
   if (trimmed.startsWith('- [ ]')) {
-    lines[targetLineIndex] = line.replace('- [ ]', '- [x]');
+    // Checking
+    let newLine = line.replace('- [ ]', '- [x]');
+    // Remove any existing signature first to avoid duplication (just in case)
+    newLine = newLine.replace(completionRegex, '');
+    
+    if (completedByText) {
+      newLine += completedByText;
+    }
+    lines[targetLineIndex] = newLine;
   } else if (trimmed.startsWith('- [x]')) {
-    lines[targetLineIndex] = line.replace('- [x]', '- [ ]');
+    // Unchecking
+    let newLine = line.replace('- [x]', '- [ ]');
+    
+    // Remove the completion signature
+    newLine = newLine.replace(completionRegex, '');
+    
+    lines[targetLineIndex] = newLine;
   }
 
   return lines.join('\n');

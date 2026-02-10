@@ -1,10 +1,11 @@
-
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Task, Staff, TaskStatus } from '../types';
 import { Trash, CheckCircle2, Clock, Square, CheckSquare, Loader2 } from 'lucide-react';
 import { toggleChecklistItem } from '../utils/checklistUtils';
 import { updateTask } from '../services/api';
+import { updateBedDateByName } from '../services/bedSyncService';
+import StaffSelectionModal from './common/StaffSelectionModal';
 
 interface TaskCardPreviewProps {
   task: Task;
@@ -31,27 +32,88 @@ const TaskCardPreview: React.FC<TaskCardPreviewProps> = ({
 }) => {
   const [localDesc, setLocalDesc] = useState(task.description);
   const [updating, setUpdating] = useState(false);
+  
+  // Staff Selection State
+  const [pendingCheckIndex, setPendingCheckIndex] = useState<number | null>(null);
+  const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
 
   useEffect(() => {
     setLocalDesc(task.description);
   }, [task.description]);
 
-  const handleToggleCheck = async (idx: number) => {
+  // Handle click on a checklist item
+  const handleCheckClick = (idx: number, isCurrentlyChecked: boolean) => {
     if (updating) return;
 
-    const newDesc = toggleChecklistItem(localDesc, idx);
-    setLocalDesc(newDesc);
+    if (isCurrentlyChecked) {
+      // If already checked -> Uncheck immediately (remove staff info automatically)
+      commitCheckToggle(idx, null);
+    } else {
+      // If unchecked -> Open modal to select who did it
+      setPendingCheckIndex(idx);
+      setIsStaffModalOpen(true);
+    }
+  };
+
+  // Called when staff selection is confirmed (or straight toggle for uncheck)
+  const commitCheckToggle = async (idx: number, selectedStaffIds: string[] | null) => {
     setUpdating(true);
+    
+    let suffix = "";
+    if (selectedStaffIds && selectedStaffIds.length > 0) {
+      const names = selectedStaffIds
+        .map(id => staff.find(s => s.id === id)?.name)
+        .filter(Boolean)
+        .join(', ');
+      if (names) {
+        suffix = ` (수행: ${names})`;
+      }
+    }
+
+    const newDesc = toggleChecklistItem(localDesc, idx, suffix);
+    setLocalDesc(newDesc);
 
     try {
       await updateTask(task.id, { description: newDesc });
+
+      // [NEW] Bed Sync Integration
+      // If this is a check action (selectedStaffIds exists), try to sync with Bed Manager
+      if (selectedStaffIds && selectedStaffIds.length > 0) {
+        const lines = localDesc.split('\n');
+        const targetLine = lines[idx] || '';
+        // Extract plain text content: Remove "- [ ] " and any trailing info
+        const content = targetLine.replace(/- \[[ x]\] /, '').trim();
+        
+        // Attempt to sync (Fire and forget, don't block UI)
+        // Only trigger if it looks like a bed task (contains "베드" or "bed")
+        if (content.includes('베드') || content.toLowerCase().includes('bed')) {
+             updateBedDateByName(content, selectedStaffIds).then(() => {
+                // If onRefresh is provided, it might be good to call it, 
+                // but doing so might re-render this component and close the modal/preview.
+                // Since Bed Manager is a separate tab, we don't strictly need to refresh 'tasks' here immediately.
+             });
+        }
+      }
+
       if (onRefresh) onRefresh();
     } catch (e) {
       console.error(e);
-      setLocalDesc(task.description); 
+      setLocalDesc(task.description); // Revert on error
     } finally {
       setUpdating(false);
+      setPendingCheckIndex(null);
     }
+  };
+
+  const handleStaffConfirm = (staffIds: string[]) => {
+    if (pendingCheckIndex !== null) {
+      commitCheckToggle(pendingCheckIndex, staffIds);
+    }
+  };
+
+  const handleSafeMouseLeave = () => {
+    if (isStaffModalOpen) return;
+    onMouseLeave();
   };
 
   const renderDescription = () => {
@@ -74,26 +136,42 @@ const TaskCardPreview: React.FC<TaskCardPreviewProps> = ({
                const trimmed = line.trim();
                const isUnchecked = trimmed.startsWith('- [ ]');
                const isChecked = trimmed.startsWith('- [x]');
-               const content = trimmed.substring(5).trim();
-
+               
                if (isUnchecked || isChecked) {
+                  const content = trimmed.substring(5).trim();
+                  // Regex to separate the task text from the completion signature
+                  const completionMatch = content.match(/\s*\(수행: ([^)]+)\)$/);
+                  const taskText = completionMatch ? content.replace(completionMatch[0], '') : content;
+                  const completedBy = completionMatch ? completionMatch[1] : null;
+
                   return (
                     <div 
                       key={idx} 
-                      onClick={(e) => { e.stopPropagation(); handleToggleCheck(idx); }}
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        handleCheckClick(idx, isChecked); 
+                      }}
                       className={`
                         flex items-start gap-3 p-3 rounded-lg border transition-all cursor-pointer group select-none
                         ${isChecked 
-                          ? 'bg-slate-100 dark:bg-slate-800/50 border-transparent opacity-60' 
+                          ? 'bg-slate-100 dark:bg-slate-800/50 border-transparent opacity-70' 
                           : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 shadow-sm hover:border-blue-400 hover:shadow-md'}
                       `}
                     >
                        <div className={`mt-0.5 shrink-0 transition-colors ${isChecked ? 'text-slate-400' : 'text-blue-600 dark:text-blue-400'}`}>
                           {isChecked ? <CheckSquare size={18} /> : <Square size={18} strokeWidth={2} className="fill-blue-50/50 dark:fill-transparent" />}
                        </div>
-                       <span className={`text-sm leading-snug ${isChecked ? 'line-through text-slate-500' : 'font-bold text-slate-800 dark:text-slate-100'}`}>
-                         {content}
-                       </span>
+                       <div className="flex flex-col">
+                         <span className={`text-sm leading-snug ${isChecked ? 'line-through text-slate-500' : 'font-bold text-slate-800 dark:text-slate-100'}`}>
+                           {taskText}
+                         </span>
+                         {/* Parse and show who completed it if checked */}
+                         {isChecked && completedBy && (
+                           <span className="text-[11px] text-blue-600 dark:text-blue-400 font-bold mt-1 bg-blue-50 dark:bg-blue-900/30 px-1.5 py-0.5 rounded-md inline-block w-fit">
+                              수행: {completedBy}
+                           </span>
+                         )}
+                       </div>
                     </div>
                   );
                } else {
@@ -132,107 +210,120 @@ const TaskCardPreview: React.FC<TaskCardPreviewProps> = ({
     : [];
 
   return createPortal(
-    <div
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
-      // CRITICAL: Stop propagation here to prevent TaskCard's onClick from firing and closing the preview immediately
-      onClick={(e) => e.stopPropagation()}
-      style={{
-        position: 'absolute',
-        top: rect.bottom + window.scrollY + 4,
-        left: rect.left + window.scrollX,
-        width: rect.width,
-        zIndex: 9999,
-      }}
-      className="animate-fade-in-up origin-top"
-    >
-      <div className={`
-        bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700
-        overflow-hidden flex flex-col relative
-      `}>
-        <div className={`h-2 w-full ${colorStyle.bg} ${colorStyle.darkBg}`}></div>
+    <>
+      <div
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={handleSafeMouseLeave} 
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          position: 'absolute',
+          top: rect.bottom + window.scrollY + 4,
+          left: rect.left + window.scrollX,
+          width: rect.width,
+          zIndex: 9999,
+        }}
+        className="animate-fade-in-up origin-top"
+      >
+        <div className={`
+          bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700
+          overflow-hidden flex flex-col relative
+        `}>
+          <div className={`h-2 w-full ${colorStyle.bg} ${colorStyle.darkBg}`}></div>
 
-        <div className="p-4">
-          <div className="flex justify-between items-start mb-3">
-            <h4 className="font-bold text-slate-900 dark:text-white text-base leading-relaxed break-keep">
-              {task.title}
-            </h4>
-          </div>
-
-          {renderDescription()}
-
-          <div className="flex flex-col gap-2 mb-3">
-            <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/50 p-2 rounded">
-               <Clock size={12} />
-               <span>작성: {new Date(task.createdAt).toLocaleDateString()}</span>
+          <div className="p-4">
+            <div className="flex justify-between items-start mb-3">
+              <h4 className="font-bold text-slate-900 dark:text-white text-base leading-relaxed break-keep">
+                {task.title}
+              </h4>
             </div>
-            
-            {isDone && (
-              <div className="mt-2 p-2.5 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-100 dark:border-green-800/50">
-                 <div className="flex items-center gap-2 text-xs text-green-700 dark:text-green-400 font-bold mb-1.5">
-                    <CheckCircle2 size={14} />
-                    <span>완료됨</span>
-                 </div>
-                 
-                 {completedStaffList.length > 0 ? (
-                    <div className="space-y-1">
-                      <p className="text-[10px] text-green-600 dark:text-green-500 font-medium">완료 처리한 직원:</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {completedStaffList.map(s => (
-                           <div key={s!.id} className="flex items-center gap-1.5 bg-white dark:bg-slate-800 px-2 py-1 rounded-full border border-green-200 dark:border-green-800 shadow-sm">
-                             <div 
-                               className="w-4 h-4 rounded-full"
-                               style={{ backgroundColor: s!.color }}
-                             ></div>
-                             <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{s!.name}</span>
-                           </div>
-                        ))}
-                      </div>
-                    </div>
-                 ) : (
-                    <p className="text-[10px] text-green-600/70 italic">완료자 정보 없음</p>
-                 )}
+
+            {renderDescription()}
+
+            <div className="flex flex-col gap-2 mb-3">
+              <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/50 p-2 rounded">
+                <Clock size={12} />
+                <span>작성: {new Date(task.createdAt).toLocaleDateString()}</span>
               </div>
-            )}
-          </div>
-          
-          <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-700">
-            <div className="flex -space-x-1.5 items-center">
-               {!isDone && <span className="text-[10px] text-slate-400 mr-2 font-medium">배정:</span>}
-               {!isDone && task.assigneeIds.map(id => {
-                  const s = staff.find(st => st.id === id);
-                  if(!s) return null;
-                  return (
-                    <div 
-                      key={id}
-                      className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] text-white font-bold ring-2 ring-white dark:ring-slate-800 shadow-sm"
-                      style={{ backgroundColor: s.color }}
-                      title={s.name}
-                    >
-                      {s.name[0]}
-                    </div>
-                  )
-               })}
-               {!isDone && task.assigneeIds.length === 0 && (
-                  <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">전체</span>
-               )}
+              
+              {isDone && (
+                <div className="mt-2 p-2.5 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-100 dark:border-green-800/50">
+                  <div className="flex items-center gap-2 text-xs text-green-700 dark:text-green-400 font-bold mb-1.5">
+                      <CheckCircle2 size={14} />
+                      <span>완료됨</span>
+                  </div>
+                  
+                  {completedStaffList.length > 0 ? (
+                      <div className="space-y-1">
+                        <p className="text-[10px] text-green-600 dark:text-green-500 font-medium">완료 처리한 직원:</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {completedStaffList.map(s => (
+                            <div key={s!.id} className="flex items-center gap-1.5 bg-white dark:bg-slate-800 px-2 py-1 rounded-full border border-green-200 dark:border-green-800 shadow-sm">
+                              <div 
+                                className="w-4 h-4 rounded-full"
+                                style={{ backgroundColor: s!.color }}
+                              ></div>
+                              <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{s!.name}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                  ) : (
+                      <p className="text-[10px] text-green-600/70 italic">완료자 정보 없음</p>
+                  )}
+                </div>
+              )}
             </div>
             
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                // Removed setTimeout to fix mobile/PWA confirm dialog issues
-                onDelete(task.id);
-              }}
-              className="flex items-center gap-1.5 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 px-3 py-2 rounded-lg transition-colors font-bold ml-auto cursor-pointer"
-            >
-              <Trash size={14} />
-              삭제
-            </button>
+            <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-700">
+              <div className="flex -space-x-1.5 items-center">
+                {!isDone && <span className="text-[10px] text-slate-400 mr-2 font-medium">배정:</span>}
+                {!isDone && task.assigneeIds.map(id => {
+                    const s = staff.find(st => st.id === id);
+                    if(!s) return null;
+                    return (
+                      <div 
+                        key={id}
+                        className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] text-white font-bold ring-2 ring-white dark:ring-slate-800 shadow-sm"
+                        style={{ backgroundColor: s.color }}
+                        title={s.name}
+                      >
+                        {s.name[0]}
+                      </div>
+                    )
+                })}
+                {!isDone && task.assigneeIds.length === 0 && (
+                    <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">전체</span>
+                )}
+              </div>
+              
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(task.id);
+                }}
+                className="flex items-center gap-1.5 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 px-3 py-2 rounded-lg transition-colors font-bold ml-auto cursor-pointer"
+              >
+                <Trash size={14} />
+                삭제
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>,
+
+      <StaffSelectionModal
+        isOpen={isStaffModalOpen}
+        staff={staff}
+        onClose={() => {
+          setIsStaffModalOpen(false);
+          setPendingCheckIndex(null);
+        }}
+        onConfirm={handleStaffConfirm}
+        title="수행 직원 선택"
+        message="해당 항목을 수행한 직원을 선택해주세요."
+        confirmLabel="확인"
+      />
+    </>,
     document.body
   );
 };

@@ -4,6 +4,7 @@ import { BedData, BedConfig, TaskStatus, Task } from '../types';
 import { updateSetting, addTask, updateTask } from '../services/api';
 import { getDefaultBedConfig, initializeBeds, getNextRoutineDate } from '../utils/bedUtils';
 import { OperationStatus } from '../components/StatusOverlay';
+import { toggleChecklistItem } from '../utils/checklistUtils';
 
 const SETTING_KEY = 'bed_manager_data';
 
@@ -61,39 +62,41 @@ export const useBedData = (settings: Record<string, any>, tasks: Task[], onRefre
       const payload = JSON.stringify({ beds: updatedBeds, config });
       await updateSetting(SETTING_KEY, payload);
       
-      // 3.1 Create Audit Task (Log)
-      await addTask({
-        title: `${bedName} 커버 교체`,
-        description: '배드 관리 탭에서 수동 교체 기록됨',
-        status: TaskStatus.DONE,
-        assigneeIds: [],
-        completedBy: staffIds,
-        createdAt: today,
-        recurrenceType: 'none'
-      });
-
-      // 3.2 Sync with Active Routine Task (Dynamic Checklist Update)
-      // Find active routine task regardless of its scheduled date (can be today or future)
-      if (tasks) {
+      // 3.1 Sync with Active Routine Task (Dynamic Checklist Update)
+      // Find active routine task regardless of its scheduled date
+      if (tasks && tasks.length > 0) {
+        // Look for tasks that seem to be bed routine tasks
         const activeRoutineTask = tasks.find(t => 
-           t.title.includes('베드 커버 정기 교체') && 
-           (t.status === TaskStatus.TODO || t.status === TaskStatus.IN_PROGRESS)
+           t.description && 
+           t.status !== TaskStatus.DONE &&
+           (t.title.includes('베드') || t.description.includes('베드'))
         );
 
         if (activeRoutineTask && activeRoutineTask.description) {
            const lines = activeRoutineTask.description.split('\n');
-           let updated = false;
-           const newLines = lines.map(line => {
-              // Match line that contains bed name and is an unchecked checklist item
-              if (line.includes(bedName) && line.trim().startsWith('- [ ]')) {
-                 updated = true;
-                 return line.replace('- [ ]', '- [x]') + ` (미리 교체됨: ${new Date().toLocaleDateString()})`;
+           let targetIndex = -1;
+
+           // Find the line index that corresponds to this bed
+           // Normalize spaces for matching
+           const normalizedBedName = bedName.replace(/\s+/g, '');
+           
+           lines.forEach((line, idx) => {
+              if (line.includes('- [ ]')) {
+                  const content = line.replace('- [ ]', '').trim().replace(/\s+/g, '');
+                  if (content.includes(normalizedBedName)) {
+                      targetIndex = idx;
+                  }
               }
-              return line;
            });
 
-           if (updated) {
-              await updateTask(activeRoutineTask.id, { description: newLines.join('\n') });
+           if (targetIndex !== -1) {
+              // Construct suffix for who performed it
+              // Note: We don't have staff names here easily without passing 'staff' list to this hook.
+              // We'll just mark it as checked with a generic timestamp for now or skip name.
+              // If we want names, we can fetch them or just say "수동 교체"
+              const suffix = ` (관리자탭 교체: ${new Date().toLocaleDateString()})`;
+              const newDesc = toggleChecklistItem(activeRoutineTask.description, targetIndex, suffix);
+              await updateTask(activeRoutineTask.id, { description: newDesc });
            }
         }
       }
@@ -146,8 +149,8 @@ export const useBedData = (settings: Record<string, any>, tasks: Task[], onRefre
           needsChange.push(`- [ ] ${bed.name}`);
         } else {
           const lastDate = new Date(bed.lastChanged);
-          // Check difference relative to the TARGET date, not necessarily today
-          const diff = targetDate.getTime() - lastDate.getTime();
+          const today = new Date();
+          const diff = today.getTime() - lastDate.getTime(); // Diff from TODAY, not target date
           
           if (diff < RECENT_THRESHOLD && diff >= 0) {
              recentlyChanged.push(`- [x] ${bed.name} (최근 교체됨: ${lastDate.toLocaleDateString()})`);

@@ -1,5 +1,4 @@
-
-const CACHE_NAME = 'pt-board-v1';
+const CACHE_NAME = 'pt-board-v5';
 const urlsToCache = [
   './',
   './index.html',
@@ -32,8 +31,17 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  // Supabase API 요청 등은 캐시하지 않고 네트워크 우선
   if (event.request.url.includes('supabase.co')) {
+    return;
+  }
+
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .catch(() => {
+          return caches.match(event.request);
+        })
+    );
     return;
   }
 
