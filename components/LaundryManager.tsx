@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Staff, LaundryLog, LaundryAction } from '../types';
-import { Shirt, Wind, CheckCircle2, History, LayoutGrid, AlertCircle, Database, Waves, ArrowRight, Copy, Filter } from 'lucide-react';
+import { Shirt, Wind, CheckCircle2, History, LayoutGrid, AlertCircle, Database, Waves, ArrowRight, Copy, Filter, Clock, Plus } from 'lucide-react';
 import StatusOverlay, { OperationStatus } from './StatusOverlay';
 import StaffSelectionModal from './common/StaffSelectionModal';
 import { fetchLaundryLogs, logLaundryAction } from '../services/laundryService';
@@ -124,49 +124,63 @@ const LaundryManager: React.FC<LaundryManagerProps> = ({ staff }) => {
   };
 
   // 3. Status View Helpers
-  const getTodayLog = (action: LaundryAction) => {
-    // Return the LATEST log for this action today
-    if (activeTab !== 'status') return null; // Only valid in status view where logs are today's
-    return logs.find(l => l.actionType === action); // logs are ordered desc by default
+  const getTodayLogs = (action: LaundryAction) => {
+    // Return ALL logs for this action today, sorted by time desc
+    if (activeTab !== 'status') return []; 
+    return logs
+      .filter(l => l.actionType === action)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   };
 
   const renderStageCard = (action: LaundryAction, title: string, icon: React.ReactNode, theme: string, description: string) => {
-    const latestLog = getTodayLog(action);
-    const isDone = !!latestLog;
+    const actionLogs = getTodayLogs(action);
+    const hasLogs = actionLogs.length > 0;
     
     return (
       <button 
         onClick={() => handleStageClick(action)}
         className={`
-          relative flex flex-col items-center justify-center p-6 rounded-2xl border-2 transition-all shadow-sm hover:shadow-lg active:scale-95 group overflow-hidden w-full min-h-[200px]
+          relative flex flex-col items-center p-4 rounded-2xl border-2 transition-all shadow-sm hover:shadow-lg active:scale-[0.98] group overflow-hidden w-full min-h-[240px]
           ${theme}
         `}
       >
+        {/* Header Icon */}
         <div className={`
-           p-4 rounded-full mb-4 transition-transform group-hover:scale-110 shadow-sm
-           ${isDone ? 'bg-white/90 scale-110' : 'bg-white/50'}
+           p-3 rounded-full mb-2 transition-transform group-hover:scale-110 shadow-sm mt-2
+           bg-white/50
         `}>
            {icon}
         </div>
         
-        <h3 className="text-xl font-bold mb-1">{title}</h3>
+        <h3 className="text-lg font-bold mb-1">{title}</h3>
         <p className="text-xs opacity-70 mb-4">{description}</p>
 
-        {isDone ? (
-          <div className="bg-white/90 dark:bg-black/40 px-3 py-2 rounded-xl flex items-center gap-2 animate-fade-in-up shadow-sm">
-             <CheckCircle2 size={16} className="text-green-600 dark:text-green-400" />
-             <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
-               {new Date(latestLog.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 완료
-             </span>
-             <div className="pl-1 border-l border-slate-300 dark:border-slate-600 ml-1">
-                <AvatarStack ids={latestLog.performedBy} staff={staff} size="xs" max={2} />
+        {/* Log List (Timeline) */}
+        <div className="flex-1 w-full bg-white/60 dark:bg-black/20 rounded-xl overflow-hidden flex flex-col mb-2 border border-black/5 dark:border-white/5">
+           {hasLogs ? (
+             <div className="overflow-y-auto custom-scrollbar flex-1 max-h-[120px] p-2 space-y-1">
+                {actionLogs.map((log) => (
+                  <div key={log.id} className="bg-white/80 dark:bg-slate-800/80 p-2 rounded-lg flex items-center justify-between shadow-sm animate-fade-in text-left">
+                     <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600 dark:text-slate-300">
+                        <Clock size={12} className="text-slate-400" />
+                        {new Date(log.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                     </div>
+                     <AvatarStack ids={log.performedBy} staff={staff} size="xs" max={2} />
+                  </div>
+                ))}
              </div>
-          </div>
-        ) : (
-          <div className="mt-auto px-4 py-2 rounded-lg bg-black/5 dark:bg-white/10 text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity">
-             터치하여 완료 처리
-          </div>
-        )}
+           ) : (
+             <div className="flex-1 flex flex-col items-center justify-center text-xs opacity-50 p-4 min-h-[80px]">
+                <Clock size={20} className="mb-1" />
+                <span>아직 기록 없음</span>
+             </div>
+           )}
+           
+           {/* Add Hint */}
+           <div className="p-2 text-[10px] font-bold bg-black/5 dark:bg-white/5 text-center flex items-center justify-center gap-1">
+              <Plus size={10} /> 터치하여 기록 추가
+           </div>
+        </div>
       </button>
     );
   };
@@ -358,7 +372,7 @@ const LaundryManager: React.FC<LaundryManagerProps> = ({ staff }) => {
            
            <p className="mt-8 text-sm text-slate-400 dark:text-slate-500 flex items-center gap-2">
              <AlertCircle size={14} />
-             카드를 터치하여 수행 인원을 기록하세요. (하루에 여러 번 가능)
+             카드를 터치하여 수행 인원을 기록하세요. (하루에 여러 번 기록 가능)
            </p>
         </div>
       ) : (

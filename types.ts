@@ -12,7 +12,8 @@ export enum Tab {
   DRAFTS = 'drafts',       // List view & Creation view combined
   STAFF = 'staff',
   BEDS = 'beds',           // Bed Management
-  LAUNDRY = 'laundry',     // New: Laundry Management
+  LAUNDRY = 'laundry',     // Laundry Management
+  SHOCKWAVE = 'shockwave', // New: Shockwave Management
   SETTINGS = 'settings',   // Now DB Settings
   GENERAL_SETTINGS = 'general_settings' // New General Settings
 }
@@ -115,4 +116,27 @@ export interface LaundryLog {
   actionType: LaundryAction;
   performedBy: string[];
   createdAt: string;
+}
+
+// --- Shockwave Types ---
+
+export type ShockwaveShift = 'MORNING' | 'EVENING';
+
+export interface ShockwaveChecklistItem {
+  id: string;
+  label: string;
+  checked: boolean;
+}
+
+export interface ShockwaveLog {
+  id: string;
+  shiftType: ShockwaveShift;
+  checklist: ShockwaveChecklistItem[];
+  performedBy: string[];
+  createdAt: string;
+}
+
+export interface ShockwaveConfig {
+  morningItems: { id: string; label: string }[];
+  eveningItems: { id: string; label: string }[];
 }

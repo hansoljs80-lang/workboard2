@@ -6,7 +6,8 @@ import Settings from './components/Settings';
 import GeneralSettings from './components/GeneralSettings';
 import DraftManager from './components/DraftManager';
 import BedManager from './components/BedManager';
-import LaundryManager from './components/LaundryManager'; // New Import
+import LaundryManager from './components/LaundryManager'; 
+import ShockwaveManager from './components/ShockwaveManager'; // New Import
 import Layout from './components/Layout';
 import { useAppData } from './hooks/useAppData';
 import { Tab } from './types';
@@ -70,9 +71,13 @@ const App: React.FC = () => {
             onNavigateToBoard={() => setActiveTab(Tab.BOARD)}
           />
         );
-      case Tab.LAUNDRY: // New Case
+      case Tab.LAUNDRY:
         return (
           <LaundryManager staff={staff} />
+        );
+      case Tab.SHOCKWAVE: // New Case
+        return (
+          <ShockwaveManager staff={staff} />
         );
       case Tab.STAFF:
         // Pass tasks and templates to enable Safe Delete logic
