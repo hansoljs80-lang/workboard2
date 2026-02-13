@@ -1,7 +1,7 @@
 
 
 export const SUPABASE_SCHEMA_SQL = `
--- 물리치료실 업무 보드 Supabase 초기화 스크립트 (v8 - Bed History Optimized)
+-- 물리치료실 업무 보드 Supabase 초기화 스크립트 (v9 - Bed Stats Optimized)
 -- Supabase 대시보드 > SQL Editor에 복사하여 실행하세요.
 
 -- 1. UUID 확장 기능 활성화
@@ -89,6 +89,10 @@ create index if not exists idx_templates_active on public.templates(is_active);
 -- [Index] 배드 이력 조회 속도 향상 (날짜 범위 검색 최적화)
 create index if not exists idx_bed_logs_bed_id on public.bed_logs(bed_id);
 create index if not exists idx_bed_logs_created_at on public.bed_logs(created_at);
+
+-- [Index] JSONB 내부 조회 성능 향상 (직원별 통계 쿼리 최적화)
+-- performed_by 배열에 특정 직원이 포함되어 있는지 빠르게 검색하기 위함
+create index if not exists idx_bed_logs_performed_by on public.bed_logs using gin (performed_by);
 
 -- 9. 초기 관리자 계정 생성 (데이터가 없을 때만)
 insert into public.staff (name, role, color, is_active)

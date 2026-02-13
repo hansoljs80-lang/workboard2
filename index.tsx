@@ -1,4 +1,4 @@
-import React, { Component, ReactNode, ErrorInfo } from 'react';
+import React, { ReactNode, ErrorInfo } from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { ThemeProvider } from './context/ThemeContext';
@@ -7,7 +7,6 @@ import { UIProvider } from './context/UIContext';
 console.log("Starting App Mount...");
 
 // PWA Service Worker Registration
-// Ensure this runs only if the bundler supports it or falls back gracefully
 try {
   // @ts-ignore
   const swUrl = new URL('sw.js', import.meta.url);
@@ -24,7 +23,7 @@ try {
     });
   }
 } catch (e) {
-  console.warn("Service Worker registration skipped or failed context check", e);
+  console.warn("Service Worker registration skipped", e);
 }
 
 interface ErrorBoundaryProps {
@@ -36,9 +35,7 @@ interface ErrorBoundaryState {
   error: any;
 }
 
-class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  public state: ErrorBoundaryState;
-
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = {

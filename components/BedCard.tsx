@@ -23,7 +23,7 @@ const BedCard: React.FC<BedCardProps> = ({ bed, staff, interval, onChange, onNam
   }, [bed.name]);
 
   // Status calculation (diffDays is now REMAINING days)
-  const { status, diffDays: remainingDays, label } = useMemo(() => 
+  const { status, diffDays: remainingDays } = useMemo(() => 
     calculateBedStatus(bed, interval), 
   [bed, interval]);
 
@@ -54,25 +54,28 @@ const BedCard: React.FC<BedCardProps> = ({ bed, staff, interval, onChange, onNam
   }, [bed.lastChanged]);
 
   // Theme configuration (Updated as per user request)
-  // Today: Blue, Needs Change (Danger/Warning): Green, Safe: White
   const theme = {
     today: 'bg-blue-100 dark:bg-blue-900/40 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200',
-    danger: 'bg-green-100 dark:bg-green-900/40 border-green-300 dark:border-green-700 text-green-800 dark:text-green-200', // Needs Changing -> Green
-    warning: 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700 text-green-800 dark:text-green-200', // Imminent -> Light Green
+    // Danger (Overdue) -> Red
+    danger: 'bg-red-100 dark:bg-red-900/40 border-red-300 dark:border-red-700 text-red-800 dark:text-red-200',
+    // Warning (Imminent) -> Orange
+    warning: 'bg-orange-50 dark:bg-orange-900/20 border-orange-300 dark:border-orange-700 text-orange-800 dark:text-orange-200',
     success: 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200',
   }[status];
 
+  // Button Theme
+  // Valid (Success) -> Blue Button
   const buttonTheme = {
     today: 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200 dark:shadow-none',
-    danger: 'bg-green-600 hover:bg-green-700 text-white shadow-green-200 dark:shadow-none',
-    warning: 'bg-green-500 hover:bg-green-600 text-white shadow-green-200 dark:shadow-none',
-    success: 'bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600',
+    danger: 'bg-red-600 hover:bg-red-700 text-white shadow-red-200 dark:shadow-none',
+    warning: 'bg-orange-500 hover:bg-orange-600 text-white shadow-orange-200 dark:shadow-none',
+    success: 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200 dark:shadow-none',
   }[status];
 
   // Large Number Display Logic
   const MainCounter = () => {
     if (!bed.lastChanged) {
-        return <span className="text-3xl font-extrabold text-green-600 dark:text-green-400">-</span>;
+        return <span className="text-3xl font-extrabold text-red-600 dark:text-red-400">-</span>;
     }
     
     // Status Today
@@ -85,12 +88,12 @@ const BedCard: React.FC<BedCardProps> = ({ bed, staff, interval, onChange, onNam
         );
     }
     
-    // Overdue (Needs Changing) -> Now Green text to match theme
+    // Overdue (Needs Changing) -> Red & Pulse
     if (remainingDays < 0) {
         return (
             <div className="flex flex-col items-center animate-pulse">
                 <span className="text-sm font-bold opacity-70 mb-[-5px]">초과</span>
-                <span className="text-4xl font-black text-green-700 dark:text-green-300 tracking-tighter">
+                <span className="text-4xl font-black text-red-700 dark:text-red-300 tracking-tighter">
                    +{Math.abs(remainingDays)}
                 </span>
                 <span className="text-xs font-bold opacity-70 mt-[-2px]">일</span>
@@ -99,14 +102,14 @@ const BedCard: React.FC<BedCardProps> = ({ bed, staff, interval, onChange, onNam
     }
 
     if (remainingDays === 0) {
-        return <span className="text-3xl font-black text-green-700 dark:text-green-300">D-Day</span>;
+        return <span className="text-3xl font-black text-orange-700 dark:text-orange-300">D-Day</span>;
     }
 
     return (
         <div className="flex flex-col items-center">
             <span className="text-sm font-bold opacity-50 mb-[-5px]">남은 기간</span>
             <div className="flex items-baseline gap-1">
-                <span className={`text-4xl font-black tracking-tighter ${status === 'warning' ? 'text-green-600 dark:text-green-400' : 'text-slate-600 dark:text-slate-400'}`}>
+                <span className={`text-4xl font-black tracking-tighter ${status === 'warning' ? 'text-orange-600 dark:text-orange-400' : 'text-slate-600 dark:text-slate-400'}`}>
                     {remainingDays}
                 </span>
                 <span className="text-sm font-bold opacity-60">일</span>
@@ -153,8 +156,11 @@ const BedCard: React.FC<BedCardProps> = ({ bed, staff, interval, onChange, onNam
            )}
          </div>
          
-         {(status === 'danger' || status === 'warning') && !isEditing && (
-             <AlertTriangle size={18} className="text-green-600 animate-bounce" />
+         {status === 'danger' && !isEditing && (
+             <AlertTriangle size={18} className="text-red-600 animate-bounce" />
+         )}
+         {status === 'warning' && !isEditing && (
+             <AlertTriangle size={18} className="text-orange-600" />
          )}
          {status === 'today' && !isEditing && (
              <CheckCircle2 size={18} className="text-blue-600" />
