@@ -1,4 +1,3 @@
-
 import { useMemo } from 'react';
 import { Task, TaskStatus, Staff } from '../types';
 import { getWeekRange, isSameDay } from '../utils/dateUtils';
@@ -18,6 +17,10 @@ export const useTaskFilter = (
     return tasks.filter(task => {
       // SKIPPED (삭제/숨김) 업무는 보드에서 제외
       if (task.status === TaskStatus.SKIPPED) return false;
+
+      // [추가] 배드 커버 관련 업무는 보드에서 제외 (배드 커버 관리 탭에서 전용으로 관리)
+      // 제목에 '베드 커버' 혹은 '베드커버'가 포함된 경우 필터링
+      if (task.title.includes('베드 커버') || task.title.includes('베드커버')) return false;
 
       const taskDate = new Date(task.createdAt);
       

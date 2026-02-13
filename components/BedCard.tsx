@@ -1,8 +1,7 @@
-
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { BedData, Staff } from '../types';
 import { calculateBedStatus } from '../utils/bedUtils';
-import { RefreshCw, History, AlertTriangle, CheckCircle2, Pencil, Check, X } from 'lucide-react';
+import { RefreshCw, AlertTriangle, CheckCircle2, Pencil, Check, X, CalendarClock, ThumbsUp } from 'lucide-react';
 import AvatarStack from './common/AvatarStack';
 
 interface BedCardProps {
@@ -23,8 +22,8 @@ const BedCard: React.FC<BedCardProps> = ({ bed, staff, interval, onChange, onNam
     setEditName(bed.name);
   }, [bed.name]);
 
-  // Use Utility for consistent status calculation
-  const { status, days, label } = useMemo(() => 
+  // Status calculation (diffDays is now REMAINING days)
+  const { status, diffDays: remainingDays, label } = useMemo(() => 
     calculateBedStatus(bed, interval), 
   [bed, interval]);
 
@@ -47,25 +46,83 @@ const BedCard: React.FC<BedCardProps> = ({ bed, staff, interval, onChange, onNam
     setIsEditing(false);
   };
 
+  // Format date string for last change
+  const lastChangedStr = useMemo(() => {
+    if (!bed.lastChanged) return '기록 없음';
+    const d = new Date(bed.lastChanged);
+    return `${d.getMonth() + 1}.${d.getDate()} 교체됨`;
+  }, [bed.lastChanged]);
+
+  // Theme configuration (Updated as per user request)
+  // Today: Blue, Needs Change (Danger/Warning): Green, Safe: White
   const theme = {
-    danger: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400',
-    warning: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400',
-    success: 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400',
+    today: 'bg-blue-100 dark:bg-blue-900/40 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200',
+    danger: 'bg-green-100 dark:bg-green-900/40 border-green-300 dark:border-green-700 text-green-800 dark:text-green-200', // Needs Changing -> Green
+    warning: 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700 text-green-800 dark:text-green-200', // Imminent -> Light Green
+    success: 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200',
   }[status];
 
   const buttonTheme = {
-    danger: 'bg-red-600 hover:bg-red-700 text-white',
-    warning: 'bg-amber-500 hover:bg-amber-600 text-white',
-    success: 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50',
+    today: 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200 dark:shadow-none',
+    danger: 'bg-green-600 hover:bg-green-700 text-white shadow-green-200 dark:shadow-none',
+    warning: 'bg-green-500 hover:bg-green-600 text-white shadow-green-200 dark:shadow-none',
+    success: 'bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600',
   }[status];
+
+  // Large Number Display Logic
+  const MainCounter = () => {
+    if (!bed.lastChanged) {
+        return <span className="text-3xl font-extrabold text-green-600 dark:text-green-400">-</span>;
+    }
+    
+    // Status Today
+    if (status === 'today') {
+        return (
+            <div className="flex flex-col items-center">
+                <ThumbsUp size={32} className="text-blue-600 dark:text-blue-400 mb-1" />
+                <span className="text-xl font-black text-blue-700 dark:text-blue-300">오늘 완료</span>
+            </div>
+        );
+    }
+    
+    // Overdue (Needs Changing) -> Now Green text to match theme
+    if (remainingDays < 0) {
+        return (
+            <div className="flex flex-col items-center animate-pulse">
+                <span className="text-sm font-bold opacity-70 mb-[-5px]">초과</span>
+                <span className="text-4xl font-black text-green-700 dark:text-green-300 tracking-tighter">
+                   +{Math.abs(remainingDays)}
+                </span>
+                <span className="text-xs font-bold opacity-70 mt-[-2px]">일</span>
+            </div>
+        );
+    }
+
+    if (remainingDays === 0) {
+        return <span className="text-3xl font-black text-green-700 dark:text-green-300">D-Day</span>;
+    }
+
+    return (
+        <div className="flex flex-col items-center">
+            <span className="text-sm font-bold opacity-50 mb-[-5px]">남은 기간</span>
+            <div className="flex items-baseline gap-1">
+                <span className={`text-4xl font-black tracking-tighter ${status === 'warning' ? 'text-green-600 dark:text-green-400' : 'text-slate-600 dark:text-slate-400'}`}>
+                    {remainingDays}
+                </span>
+                <span className="text-sm font-bold opacity-60">일</span>
+            </div>
+        </div>
+    );
+  };
 
   return (
     <div className={`
-      relative p-4 rounded-2xl border-2 transition-all flex flex-col gap-3 shadow-sm hover:shadow-md
+      relative p-3 rounded-2xl border-2 transition-all flex flex-col shadow-sm hover:shadow-md h-full min-h-[160px]
       ${theme}
     `}>
-      <div className="flex justify-between items-start min-h-[52px]">
-        <div className="flex-1 min-w-0 pr-2">
+      {/* Header: Name & Edit */}
+      <div className="flex justify-between items-start mb-2 h-8">
+         <div className="flex-1 min-w-0">
            {isEditing ? (
              <div className="flex items-center gap-1">
                <input
@@ -83,60 +140,75 @@ const BedCard: React.FC<BedCardProps> = ({ bed, staff, interval, onChange, onNam
                <button onClick={handleCancelEdit} className="text-red-500 hover:bg-red-100 p-1 rounded"><X size={16}/></button>
              </div>
            ) : (
-             <div className="group flex items-center gap-2">
-               <h3 className="font-bold text-lg truncate" title={bed.name}>{bed.name}</h3>
+             <div className="group flex items-center gap-1">
+               <h3 className="font-bold text-base truncate" title={bed.name}>{bed.name}</h3>
                <button 
                  onClick={handleStartEdit}
-                 className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-black/10 rounded text-inherit"
+                 className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded text-inherit"
                  title="이름 수정"
                >
-                 <Pencil size={12} />
+                 <Pencil size={10} />
                </button>
              </div>
            )}
-           
-           <div className="flex items-center gap-1.5 text-xs font-bold mt-1 opacity-80">
-             {status === 'success' ? <CheckCircle2 size={12} /> : <History size={12} />}
-             {label}
-           </div>
-        </div>
-        
-        {status === 'danger' && !isEditing && (
-           <div className="animate-pulse text-red-500 shrink-0">
-              <AlertTriangle size={20} />
-           </div>
-        )}
+         </div>
+         
+         {(status === 'danger' || status === 'warning') && !isEditing && (
+             <AlertTriangle size={18} className="text-green-600 animate-bounce" />
+         )}
+         {status === 'today' && !isEditing && (
+             <CheckCircle2 size={18} className="text-blue-600" />
+         )}
+         {status === 'success' && !isEditing && (
+             <CheckCircle2 size={18} className="text-slate-300" />
+         )}
       </div>
 
-      <div className="mt-auto pt-2">
+      {/* Body: Big Countdown Number */}
+      <div className="flex-1 flex flex-col items-center justify-center py-1">
+         <MainCounter />
+      </div>
+
+      {/* Footer Info: Last Change Date */}
+      <div className="flex justify-center items-center gap-1 text-[10px] opacity-60 font-medium mb-3">
+         <CalendarClock size={10} />
+         <span>{lastChangedStr}</span>
+      </div>
+
+      {/* Action Button */}
+      <div className="mt-auto">
         <button
           onClick={onChange}
-          disabled={isEditing}
+          disabled={isEditing || status === 'today'}
           className={`
              w-full py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm
              ${buttonTheme}
-             ${isEditing ? 'opacity-50 cursor-not-allowed' : ''}
+             ${isEditing || status === 'today' ? 'opacity-50 cursor-not-allowed' : ''}
           `}
         >
-          <RefreshCw size={16} />
-          지금 교체
+          {status === 'today' ? (
+             <>
+               <Check size={14} />
+               완료됨
+             </>
+          ) : (
+             <>
+               <RefreshCw size={14} className={(status === 'danger' || status === 'warning') ? 'animate-spin-slow' : ''} />
+               지금 교체
+             </>
+          )}
         </button>
       </div>
 
-      {days >= 0 && bed.lastChanged && !isEditing && (
-         <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
-            <span className="text-[10px] opacity-40 font-mono">
-               {bed.lastChanged.substring(5, 10)}
-            </span>
-            {/* Show avatar of who changed it */}
-            {bed.lastChangedBy && bed.lastChangedBy.length > 0 && (
-               <AvatarStack 
-                 ids={bed.lastChangedBy} 
-                 staff={staff} 
-                 size="xs" 
-                 max={2} 
-               />
-            )}
+      {/* Staff Avatar (Absolute Top Right) */}
+      {bed.lastChangedBy && bed.lastChangedBy.length > 0 && !isEditing && (
+         <div className="absolute top-2 right-2">
+             <AvatarStack 
+               ids={bed.lastChangedBy} 
+               staff={staff} 
+               size="xs" 
+               max={1} 
+             />
          </div>
       )}
     </div>

@@ -2,12 +2,13 @@
 import { BedData, BedStatus } from '../types';
 
 /**
- * Calculates the status of a bed based on its last changed date and the configured interval.
- * Returns the status level (color), days since change, and a display label.
+ * Calculates the status of a bed based on countdown logic.
+ * Returns the status level (color), remaining days, and a display label.
  */
 export const calculateBedStatus = (bed: BedData, interval: number): BedStatus => {
+  // 1. If never changed, treat as overdue (needs immediate action)
   if (!bed.lastChanged) {
-    return { status: 'danger', diffDays: -1, label: '기록 없음' };
+    return { status: 'danger', diffDays: -1, label: '교체 기록 없음' };
   }
 
   const lastDate = new Date(bed.lastChanged);
@@ -17,20 +18,39 @@ export const calculateBedStatus = (bed: BedData, interval: number): BedStatus =>
   lastDate.setHours(0, 0, 0, 0);
   today.setHours(0, 0, 0, 0);
   
+  // Calculate days passed since last change
   const diffTime = today.getTime() - lastDate.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+  const passedDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); 
   
-  if (diffDays >= interval) {
-    return { status: 'danger', diffDays, label: `${diffDays}일 전 교체` };
+  // Calculate REMAINING days (Countdown)
+  const remainingDays = interval - passedDays;
+  
+  // 2. Check for "Today" status (Priority)
+  if (passedDays === 0) {
+    return { status: 'today', diffDays: remainingDays, label: '오늘 교체함' };
   }
-  if (diffDays >= interval - 2) {
-    return { status: 'warning', diffDays, label: `${diffDays}일 전 교체` };
+
+  // Determine Status based on Remaining Days
+  if (remainingDays < 0) {
+    // Overdue
+    return { status: 'danger', diffDays: remainingDays, label: `${Math.abs(remainingDays)}일 초과됨` };
   }
   
+  if (remainingDays === 0) {
+    // Due Today
+    return { status: 'warning', diffDays: 0, label: '오늘 교체 예정' };
+  }
+
+  if (remainingDays <= 2) {
+    // Imminent (1-2 days left)
+    return { status: 'warning', diffDays: remainingDays, label: `${remainingDays}일 남음` };
+  }
+  
+  // Safe
   return { 
     status: 'success', 
-    diffDays, 
-    label: diffDays === 0 ? '오늘 교체함' : `${diffDays}일 전 교체` 
+    diffDays: remainingDays, 
+    label: `${remainingDays}일 남음` 
   };
 };
 
@@ -39,7 +59,7 @@ export const calculateBedStatus = (bed: BedData, interval: number): BedStatus =>
  */
 export const getDefaultBedConfig = () => ({
   count: 10,
-  interval: 7, // 1 week
+  interval: 7, // 1 week default
   routineDay: 4, // Thursday
   cols: 5
 });
@@ -64,7 +84,6 @@ export const getNextRoutineDate = (routineDay: number): Date => {
   const currentDay = today.getDay();
   
   // Calculate difference (0-6)
-  // If today is the routine day (diff=0), we treat it as today (upcoming includes today)
   let daysUntil = (routineDay - currentDay + 7) % 7;
   
   const nextDate = new Date(today);

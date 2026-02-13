@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { BedData, BedConfig, TaskStatus, Task } from '../types';
 import { updateSetting, addTask, updateTask } from '../services/api';
+import { logBedChange } from '../services/bedService';
 import { getDefaultBedConfig, initializeBeds, getNextRoutineDate } from '../utils/bedUtils';
 import { OperationStatus } from '../components/StatusOverlay';
 import { toggleChecklistItem } from '../utils/checklistUtils';
@@ -51,6 +52,9 @@ export const useBedData = (settings: Record<string, any>, tasks: Task[], onRefre
       const today = new Date().toISOString();
       const bedName = beds.find(b => b.id === bedId)?.name || `${bedId}번 베드`;
       
+      // 3.0 Insert Log to History Table (Fire and Forget)
+      logBedChange(bedId, bedName, staffIds).catch(e => console.error("Log failed", e));
+
       const updatedBeds = beds.map(b => 
         b.id === bedId ? { ...b, lastChanged: today, lastChangedBy: staffIds } : b
       );
@@ -91,9 +95,6 @@ export const useBedData = (settings: Record<string, any>, tasks: Task[], onRefre
 
            if (targetIndex !== -1) {
               // Construct suffix for who performed it
-              // Note: We don't have staff names here easily without passing 'staff' list to this hook.
-              // We'll just mark it as checked with a generic timestamp for now or skip name.
-              // If we want names, we can fetch them or just say "수동 교체"
               const suffix = ` (관리자탭 교체: ${new Date().toLocaleDateString()})`;
               const newDesc = toggleChecklistItem(activeRoutineTask.description, targetIndex, suffix);
               await updateTask(activeRoutineTask.id, { description: newDesc });

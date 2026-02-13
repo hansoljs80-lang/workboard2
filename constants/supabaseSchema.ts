@@ -1,7 +1,7 @@
 
 
 export const SUPABASE_SCHEMA_SQL = `
--- 물리치료실 업무 보드 Supabase 초기화 스크립트 (v7 - Bed Audit Update)
+-- 물리치료실 업무 보드 Supabase 초기화 스크립트 (v8 - Bed History Optimized)
 -- Supabase 대시보드 > SQL Editor에 복사하여 실행하세요.
 
 -- 1. UUID 확장 기능 활성화
@@ -57,20 +57,21 @@ create table if not exists public.settings (
     updated_at timestamptz default now()
 );
 
--- 7. BED LOGS (배드 관리 로그) 테이블 - [NEW]
--- 현재 설정은 settings에 JSON으로 저장되지만, 교체 이력은 별도로 쌓아두면 추후 분석에 유리합니다.
+-- 7. BED LOGS (배드 관리 로그) 테이블
+-- 교체 이력을 영구 보존하기 위한 테이블입니다.
 create table if not exists public.bed_logs (
     id text default uuid_generate_v4()::text primary key,
     bed_id integer not null,
     bed_name text not null,
-    action_type text default 'CHANGE', -- CHANGE, INSPECT etc.
+    action_type text default 'CHANGE', -- CHANGE(교체), INSPECT(점검) 등
     performed_by jsonb default '[]'::jsonb, -- 작업을 수행한 직원 ID 목록
     created_at timestamptz default now(),
     note text
 );
 
--- 8. 성능 최적화 및 무결성 강화
+-- 8. 성능 최적화 및 무결성 강화 (인덱스 설정)
 
+-- 외래키 연결 (템플릿 삭제 시 연결된 업무 처리를 위해)
 alter table public.tasks 
   drop constraint if exists fk_tasks_template;
 
@@ -80,11 +81,14 @@ alter table public.tasks
   references public.templates(id) 
   on delete set null;
 
--- [Index] 업무 보드 로딩 속도 향상을 위한 복합 인덱스 (날짜 + 상태)
+-- [Index] 업무 보드 로딩 속도 향상
 create index if not exists idx_tasks_date_status on public.tasks(created_at, status);
 create index if not exists idx_tasks_source_template on public.tasks(source_template_id);
 create index if not exists idx_templates_active on public.templates(is_active);
+
+-- [Index] 배드 이력 조회 속도 향상 (날짜 범위 검색 최적화)
 create index if not exists idx_bed_logs_bed_id on public.bed_logs(bed_id);
+create index if not exists idx_bed_logs_created_at on public.bed_logs(created_at);
 
 -- 9. 초기 관리자 계정 생성 (데이터가 없을 때만)
 insert into public.staff (name, role, color, is_active)
@@ -98,6 +102,7 @@ alter table public.tasks enable row level security;
 alter table public.settings enable row level security;
 alter table public.bed_logs enable row level security;
 
+-- 기존 정책 삭제 후 재생성 (중복 방지)
 drop policy if exists "Enable all access for all users" on public.staff;
 drop policy if exists "Enable all access for all users" on public.templates;
 drop policy if exists "Enable all access for all users" on public.tasks;

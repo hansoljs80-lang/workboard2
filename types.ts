@@ -87,10 +87,20 @@ export interface BedConfig {
   cols: number; // Desktop columns
 }
 
-export type BedStatusLevel = 'success' | 'warning' | 'danger';
+export type BedStatusLevel = 'success' | 'warning' | 'danger' | 'today';
 
 export interface BedStatus {
   status: BedStatusLevel;
   diffDays: number;
   label: string;
+}
+
+export interface BedLog {
+  id: string;
+  bedId: number;
+  bedName: string;
+  actionType: string;
+  performedBy: string[];
+  createdAt: string;
+  note?: string;
 }

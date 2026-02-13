@@ -21,7 +21,7 @@ const SupabaseSchemaSection: React.FC = () => {
           </div>
           <div>
             <h3 className="font-bold text-slate-800 dark:text-slate-200">1단계: 테이블 생성 (SQL Editor)</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">아래 SQL 코드를 복사하여 Supabase SQL Editor에서 실행하세요.</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">아래 코드를 실행하여 배드 관리 이력 테이블 등을 생성하세요.</p>
           </div>
         </div>
         <button 
@@ -46,12 +46,12 @@ const SupabaseSchemaSection: React.FC = () => {
       </div>
 
       <div className="mt-4 text-sm text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/30 p-4 rounded-lg border border-slate-100 dark:border-slate-800">
-        <h4 className="font-bold mb-2 flex items-center gap-2">🚀 테이블 세팅 방법</h4>
+        <h4 className="font-bold mb-2 flex items-center gap-2">🚀 테이블 업데이트 방법</h4>
         <ol className="list-decimal pl-5 space-y-1 text-xs md:text-sm">
-          <li><strong>Supabase 대시보드</strong>에 접속하여 새 프로젝트를 생성합니다.</li>
-          <li>좌측 메뉴의 <strong>SQL Editor</strong>로 이동합니다.</li>
-          <li>위 코드를 붙여넣고 <strong>Run</strong> 버튼을 눌러 테이블을 생성합니다.</li>
-          <li><strong>Success</strong> 메시지가 나오면 테이블 생성 완료!</li>
+          <li><strong>Supabase 대시보드</strong> 좌측 메뉴의 <strong>SQL Editor</strong>로 이동합니다.</li>
+          <li>위 코드를 붙여넣고 <strong>Run</strong> 버튼을 누릅니다.</li>
+          <li><code>if not exists</code> 구문이 있어, 이미 테이블이 존재하면 필요한 인덱스만 추가됩니다.</li>
+          <li><strong>Success</strong> 메시지가 나오면 배드 이력 저장 기능이 활성화됩니다.</li>
         </ol>
       </div>
     </div>
