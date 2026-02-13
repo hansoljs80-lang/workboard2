@@ -7,7 +7,8 @@ import GeneralSettings from './components/GeneralSettings';
 import DraftManager from './components/DraftManager';
 import BedManager from './components/BedManager';
 import LaundryManager from './components/LaundryManager'; 
-import ShockwaveManager from './components/ShockwaveManager'; // New Import
+import ShockwaveManager from './components/ShockwaveManager'; 
+import PtRoomManager from './components/PtRoomManager'; // New Import
 import Layout from './components/Layout';
 import { useAppData } from './hooks/useAppData';
 import { Tab } from './types';
@@ -75,7 +76,11 @@ const App: React.FC = () => {
         return (
           <LaundryManager staff={staff} />
         );
-      case Tab.SHOCKWAVE: // New Case
+      case Tab.PT_ROOM: // New Case
+        return (
+          <PtRoomManager staff={staff} />
+        );
+      case Tab.SHOCKWAVE:
         return (
           <ShockwaveManager staff={staff} />
         );

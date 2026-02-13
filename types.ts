@@ -13,7 +13,8 @@ export enum Tab {
   STAFF = 'staff',
   BEDS = 'beds',           // Bed Management
   LAUNDRY = 'laundry',     // Laundry Management
-  SHOCKWAVE = 'shockwave', // New: Shockwave Management
+  SHOCKWAVE = 'shockwave', // Shockwave Management
+  PT_ROOM = 'pt_room',     // New: PT Room Management
   SETTINGS = 'settings',   // Now DB Settings
   GENERAL_SETTINGS = 'general_settings' // New General Settings
 }
@@ -138,5 +139,29 @@ export interface ShockwaveLog {
 
 export interface ShockwaveConfig {
   morningItems: { id: string; label: string }[];
+  eveningItems: { id: string; label: string }[];
+}
+
+// --- PT Room Types (New) ---
+
+export type PtRoomShift = 'MORNING' | 'DAILY' | 'EVENING';
+
+export interface PtRoomChecklistItem {
+  id: string;
+  label: string;
+  checked: boolean;
+}
+
+export interface PtRoomLog {
+  id: string;
+  shiftType: PtRoomShift;
+  checklist: PtRoomChecklistItem[];
+  performedBy: string[];
+  createdAt: string;
+}
+
+export interface PtRoomConfig {
+  morningItems: { id: string; label: string }[];
+  dailyItems: { id: string; label: string }[];
   eveningItems: { id: string; label: string }[];
 }

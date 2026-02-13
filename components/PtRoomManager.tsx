@@ -1,48 +1,49 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Staff, ShockwaveShift, ShockwaveLog, ShockwaveChecklistItem, ShockwaveConfig } from '../types';
-import { Activity, Sun, Moon, LayoutGrid, History, CheckSquare, Square, Save, AlertCircle, Copy, Filter, Settings } from 'lucide-react';
+import { Staff, PtRoomShift, PtRoomLog, PtRoomChecklistItem, PtRoomConfig } from '../types';
+import { Stethoscope, Sun, Moon, Clock, LayoutGrid, History, CheckSquare, Square, Save, AlertCircle, Copy, Filter, Settings } from 'lucide-react';
 import StatusOverlay, { OperationStatus } from './StatusOverlay';
 import StaffSelectionModal from './common/StaffSelectionModal';
-import { fetchShockwaveLogs, logShockwaveAction, getShockwaveConfig, saveShockwaveConfig } from '../services/shockwaveService';
+import { fetchPtRoomLogs, logPtRoomAction, getPtRoomConfig, savePtRoomConfig } from '../services/ptRoomService';
 import DateNavigator from './DateNavigator';
 import AvatarStack from './common/AvatarStack';
-import ShockwaveStats from './shockwave/ShockwaveStats';
-import ShockwaveConfigModal from './shockwave/ShockwaveConfigModal';
+import PtRoomStats from './pt/PtRoomStats';
+import PtRoomConfigModal from './pt/PtRoomConfigModal';
 import { getWeekRange } from '../utils/dateUtils';
 import { SUPABASE_SCHEMA_SQL } from '../constants/supabaseSchema';
 
-interface ShockwaveManagerProps {
+interface PtRoomManagerProps {
   staff: Staff[];
 }
 
 type TabMode = 'status' | 'history';
 type ViewMode = 'day' | 'week' | 'month';
 
-const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
+const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
   const [activeTab, setActiveTab] = useState<TabMode>('status');
   const [opStatus, setOpStatus] = useState<OperationStatus>('idle');
   const [opMessage, setOpMessage] = useState('');
 
   // Config State
-  const [config, setConfig] = useState<ShockwaveConfig>({ morningItems: [], eveningItems: [] });
+  const [config, setConfig] = useState<PtRoomConfig>({ morningItems: [], dailyItems: [], eveningItems: [] });
   const [isConfigOpen, setIsConfigOpen] = useState(false);
 
   // Checklist State
   const [morningChecks, setMorningChecks] = useState<string[]>([]);
+  const [dailyChecks, setDailyChecks] = useState<string[]>([]);
   const [eveningChecks, setEveningChecks] = useState<string[]>([]);
-  const [confirmingShift, setConfirmingShift] = useState<ShockwaveShift | null>(null);
+  const [confirmingShift, setConfirmingShift] = useState<PtRoomShift | null>(null);
 
   // Data Logic
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [logs, setLogs] = useState<ShockwaveLog[]>([]);
+  const [logs, setLogs] = useState<PtRoomLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [error, setError] = useState('');
-  const [typeFilter, setTypeFilter] = useState<'ALL' | ShockwaveShift>('ALL');
+  const [typeFilter, setTypeFilter] = useState<'ALL' | PtRoomShift>('ALL');
 
   // Load Config
   const loadConfig = useCallback(async () => {
-    const cfg = await getShockwaveConfig();
+    const cfg = await getPtRoomConfig();
     setConfig(cfg);
   }, []);
 
@@ -58,9 +59,8 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
     let start = new Date(currentDate);
     let end = new Date(currentDate);
 
-    // Filter time range based on view mode
     if (activeTab === 'status') {
-      start = new Date(); // Always show today for status
+      start = new Date();
       start.setHours(0, 0, 0, 0);
       end = new Date();
       end.setHours(23, 59, 59, 999);
@@ -79,7 +79,7 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
     }
 
     try {
-      const res = await fetchShockwaveLogs(start, end);
+      const res = await fetchPtRoomLogs(start, end);
       if (res.success && res.data) {
         setLogs(res.data);
       } else {
@@ -102,22 +102,29 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
   }, [loadLogs]);
 
   // Handlers
-  const handleSaveConfig = async (newConfig: ShockwaveConfig) => {
+  const handleSaveConfig = async (newConfig: PtRoomConfig) => {
     setConfig(newConfig);
     setIsConfigOpen(false);
-    await saveShockwaveConfig(newConfig);
+    await savePtRoomConfig(newConfig);
   };
 
-  const toggleCheck = (shift: ShockwaveShift, id: string) => {
+  const toggleCheck = (shift: PtRoomShift, id: string) => {
     if (shift === 'MORNING') {
       setMorningChecks(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+    } else if (shift === 'DAILY') {
+      setDailyChecks(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
     } else {
       setEveningChecks(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
     }
   };
 
-  const handleSaveClick = (shift: ShockwaveShift) => {
-    const checks = shift === 'MORNING' ? morningChecks : eveningChecks;
+  const handleSaveClick = (shift: PtRoomShift) => {
+    // If attempting to save with no checks, confirm first
+    const checks = shift === 'MORNING' ? morningChecks : shift === 'DAILY' ? dailyChecks : eveningChecks;
+    
+    // BUT if there is already a log for today, we might be "adding" to it or overwriting.
+    // For simplicity, we just save a new log entry.
+    
     if (checks.length === 0) {
       if(!window.confirm("체크된 항목이 없습니다. 그래도 저장하시겠습니까?")) return;
     }
@@ -130,23 +137,23 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
     setOpStatus('loading');
     setOpMessage('저장 중...');
 
-    const items = confirmingShift === 'MORNING' ? config.morningItems : config.eveningItems;
-    const checks = confirmingShift === 'MORNING' ? morningChecks : eveningChecks;
+    const items = confirmingShift === 'MORNING' ? config.morningItems : confirmingShift === 'DAILY' ? config.dailyItems : config.eveningItems;
+    const checks = confirmingShift === 'MORNING' ? morningChecks : confirmingShift === 'DAILY' ? dailyChecks : eveningChecks;
     
-    // Construct payload
-    const checklistData: ShockwaveChecklistItem[] = items.map(item => ({
+    const checklistData: PtRoomChecklistItem[] = items.map(item => ({
       id: item.id,
       label: item.label,
       checked: checks.includes(item.id)
     }));
 
-    const res = await logShockwaveAction(confirmingShift, checklistData, staffIds);
+    const res = await logPtRoomAction(confirmingShift, checklistData, staffIds);
 
     if (res.success) {
       setOpStatus('success');
       setOpMessage('저장 완료');
       // Reset checklist
       if (confirmingShift === 'MORNING') setMorningChecks([]);
+      else if (confirmingShift === 'DAILY') setDailyChecks([]);
       else setEveningChecks([]);
       
       loadLogs();
@@ -164,8 +171,7 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
     alert("SQL 코드가 클립보드에 복사되었습니다.\nSupabase 대시보드 > SQL Editor에서 실행해주세요.");
   };
 
-  // Helper: Get today's logs for status view
-  const getTodayLogs = (shift: ShockwaveShift) => {
+  const getTodayLogs = (shift: PtRoomShift) => {
     if (activeTab !== 'status') return [];
     return logs
       .filter(l => l.shiftType === shift)
@@ -200,7 +206,7 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
   }, [filteredLogs, staff]);
 
   const shiftLeaders = useMemo(() => {
-    const getLeader = (type: ShockwaveShift) => {
+    const getLeader = (type: PtRoomShift) => {
         const counts: Record<string, number> = {};
         logs.filter(l => l.shiftType === type).forEach(l => {
             l.performedBy.forEach(id => counts[id] = (counts[id] || 0) + 1);
@@ -218,13 +224,13 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
     };
     return {
         MORNING: getLeader('MORNING'),
+        DAILY: getLeader('DAILY'),
         EVENING: getLeader('EVENING')
     };
   }, [logs, staff]);
 
-  // Group logs for history view
   const groupedLogs = useMemo(() => {
-    const groups: { date: string; items: ShockwaveLog[] }[] = [];
+    const groups: { date: string; items: PtRoomLog[] }[] = [];
     filteredLogs.forEach(log => {
         try {
             const dateStr = new Date(log.createdAt).toLocaleDateString('ko-KR', { 
@@ -242,7 +248,7 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
   }, [filteredLogs]);
 
   const renderChecklistCard = (
-    shift: ShockwaveShift, 
+    shift: PtRoomShift, 
     title: string, 
     icon: React.ReactNode, 
     items: { id: string, label: string }[],
@@ -252,15 +258,31 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
     const todayLogs = getTodayLogs(shift);
     const lastLog = todayLogs.length > 0 ? todayLogs[0] : null;
 
-    // Logic Update: If a log exists for today, show those items as checked visually (for feedback).
-    // If user is editing (has selected items manually), prioritize manual selection.
+    // Visual feedback logic: If completed today, use the checked state from the log.
+    // If not completed or user is actively editing (implied by non-empty checkedState if we wanted strict separation, 
+    // but here we mix them. If log exists, show it. If user clicks, it updates local state.)
+    // *Simplified:* If log exists, we show those checks as visual feedback but allow clicking to start a "new" entry state or just update visual.
+    // To keep it simple: If log exists, we use its checks for display IF local checkedState is empty (initial render state).
+    // Actually, let's just overlay.
+    
+    const displayChecks = lastLog && checkedState.length === 0 
+        ? lastLog.checklist.filter(i => i.checked).map(i => i.id) 
+        : checkedState;
+
+    // If lastLog exists, we can consider the task "Done" for the day, but user might want to add another.
+    // We'll show the checks from the last log as "read-only visual" or pre-filled.
+    // Let's make them pre-filled.
+    
+    // To allow "Add another", we need to distinguish.
+    // User request: "If completed, checkbox checked visually."
+    // Implementation: If `lastLog` exists, rendering checks based on `lastLog` if `checkedState` is empty.
+    
     const effectiveChecks = (lastLog && checkedState.length === 0) 
         ? lastLog.checklist.filter(c => c.checked).map(c => c.id) 
         : checkedState;
 
     return (
       <div className={`flex flex-col h-full rounded-2xl border-2 transition-all shadow-sm overflow-hidden ${theme}`}>
-         {/* Header */}
          <div className="p-4 flex items-center justify-between border-b border-black/5 dark:border-white/5">
             <div className="flex items-center gap-3">
                <div className="p-2 bg-white/50 rounded-lg shadow-sm">{icon}</div>
@@ -268,12 +290,11 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
             </div>
             {lastLog && (
                 <div className="text-xs font-medium px-2 py-1 bg-white/50 rounded-md flex items-center gap-1">
-                    <CheckSquare size={12} /> 완료됨 ({new Date(lastLog.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})})
+                    <CheckSquare size={12} /> 완료 ({new Date(lastLog.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})})
                 </div>
             )}
          </div>
 
-         {/* Checklist Body */}
          <div className="flex-1 p-4 overflow-y-auto custom-scrollbar bg-white/30 dark:bg-black/10">
             {items.length === 0 ? (
                <div className="text-center text-sm opacity-50 py-10">설정에서 업무를 추가해주세요.</div>
@@ -304,14 +325,13 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
             )}
          </div>
 
-         {/* Action Footer */}
          <div className="p-4 border-t border-black/5 dark:border-white/5 bg-white/20">
             <button
               onClick={() => handleSaveClick(shift)}
               disabled={items.length === 0}
               className="w-full py-3 bg-white dark:bg-slate-800 rounded-xl font-bold shadow-sm hover:shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 text-sm disabled:opacity-50 disabled:scale-100"
             >
-               <Save size={16} /> 기록 저장 (완료 처리)
+               <Save size={16} /> 기록 저장
             </button>
             {todayLogs.length > 0 && (
                 <div className="mt-3 pt-3 border-t border-black/5 dark:border-white/5">
@@ -335,16 +355,15 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
     <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 p-4 md:p-6 pb-24 overflow-hidden">
       <StatusOverlay status={opStatus} message={opMessage} />
 
-      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 shrink-0">
         <div className="flex items-center gap-3">
           <div className="bg-white dark:bg-slate-800 p-2 rounded-lg shadow-sm border border-slate-300 dark:border-slate-700">
-            <Activity className="text-pink-600" size={24} />
+            <Stethoscope className="text-emerald-600" size={24} />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">충격파실 관리</h2>
+            <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">물리치료실 관리</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400">
-               매일 아침/저녁 정기 업무를 확인하고 기록합니다.
+               치료실 환경 및 장비 상태를 시간대별로 점검합니다.
             </p>
           </div>
         </div>
@@ -362,13 +381,13 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
            <div className="bg-white dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 flex">
               <button
                 onClick={() => setActiveTab('status')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'status' ? 'bg-pink-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'status' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
               >
                 <LayoutGrid size={16} /> 업무 체크
               </button>
               <button
                 onClick={() => setActiveTab('history')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'history' ? 'bg-pink-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'history' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
               >
                 <History size={16} /> 이력/통계
               </button>
@@ -376,20 +395,21 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
         </div>
       </div>
 
-      {/* Content */}
       {activeTab === 'status' ? (
         <div className="flex-1 overflow-hidden">
            {error === 'DATA_TABLE_MISSING' && (
               <div className="mb-4 bg-amber-50 text-amber-800 p-3 rounded-xl border border-amber-200 flex flex-col md:flex-row items-center justify-center gap-3">
                  <span className="font-bold text-sm flex items-center gap-2">
-                    <AlertCircle size={16} /> DB 테이블(shockwave_logs)이 필요합니다.
+                    <AlertCircle size={16} /> DB 테이블(pt_room_logs)이 필요합니다.
                  </span>
                  <button onClick={handleCopySQL} className="text-xs bg-amber-200 px-3 py-1 rounded-lg font-bold flex items-center gap-1">
                    <Copy size={12} /> SQL 복사
                  </button>
               </div>
            )}
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full">
+           
+           {/* Responsive Grid for 3 Cards */}
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full overflow-y-auto pb-4 custom-scrollbar">
               {renderChecklistCard(
                 'MORNING', 
                 '아침 업무', 
@@ -397,6 +417,14 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
                 config.morningItems,
                 morningChecks,
                 'bg-amber-50/50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-100'
+              )}
+              {renderChecklistCard(
+                'DAILY', 
+                '일상 업무', 
+                <Clock className="text-blue-500" />,
+                config.dailyItems,
+                dailyChecks,
+                'bg-blue-50/50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-100'
               )}
               {renderChecklistCard(
                 'EVENING', 
@@ -412,7 +440,7 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
         <div className="flex-1 overflow-hidden flex flex-col md:flex-row gap-4 animate-fade-in">
            {/* Sidebar Stats */}
            <div className="w-full md:w-80 shrink-0 h-64 md:h-full order-1">
-              <ShockwaveStats stats={stats} shiftLeaders={shiftLeaders} loading={loading} />
+              <PtRoomStats stats={stats} shiftLeaders={shiftLeaders} loading={loading} />
            </div>
 
            {/* Main Log List */}
@@ -423,7 +451,7 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
                       <button 
                         key={mode}
                         onClick={() => setViewMode(mode as ViewMode)}
-                        className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${viewMode === mode ? 'bg-white dark:bg-slate-600 text-pink-600 dark:text-white shadow-sm' : 'text-slate-500'}`}
+                        className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${viewMode === mode ? 'bg-white dark:bg-slate-600 text-emerald-600 dark:text-white shadow-sm' : 'text-slate-500'}`}
                       >
                         {{'day': '일간', 'week': '주간', 'month': '월간'}[mode]}
                       </button>
@@ -449,22 +477,21 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
                  <div className="flex items-center gap-1.5 px-2 text-xs font-bold text-slate-500 whitespace-nowrap">
                     <Filter size={14} /> 필터:
                  </div>
-                 {['ALL', 'MORNING', 'EVENING'].map((type) => (
+                 {['ALL', 'MORNING', 'DAILY', 'EVENING'].map((type) => (
                     <button
                         key={type}
                         onClick={() => setTypeFilter(type as any)}
                         className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${
                             typeFilter === type 
-                            ? 'bg-pink-600 text-white border-pink-600 shadow-sm' 
+                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm' 
                             : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50'
                         }`}
                     >
-                        {type === 'ALL' ? '전체' : type === 'MORNING' ? '아침' : '저녁'}
+                        {type === 'ALL' ? '전체' : type === 'MORNING' ? '아침' : type === 'DAILY' ? '일상' : '저녁'}
                     </button>
                  ))}
               </div>
 
-              {/* List */}
               {loading ? (
                  <div className="py-20 text-center text-slate-400">데이터 불러오는 중...</div>
               ) : groupedLogs.length === 0 ? (
@@ -479,20 +506,27 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
                           <div className="space-y-3">
                              {group.items.map(log => {
                                 const isMorning = log.shiftType === 'MORNING';
+                                const isDaily = log.shiftType === 'DAILY';
                                 const themeClass = isMorning 
                                    ? 'border-amber-200 bg-amber-50 dark:bg-amber-900/10 dark:border-amber-800' 
-                                   : 'border-indigo-200 bg-indigo-50 dark:bg-indigo-900/10 dark:border-indigo-800';
+                                   : isDaily 
+                                     ? 'border-blue-200 bg-blue-50 dark:bg-blue-900/10 dark:border-blue-800'
+                                     : 'border-indigo-200 bg-indigo-50 dark:bg-indigo-900/10 dark:border-indigo-800';
                                 
                                 return (
                                    <div key={log.id} className={`p-3 rounded-xl border ${themeClass}`}>
                                       <div className="flex justify-between items-start mb-2">
                                          <div className="flex items-center gap-2">
-                                            <div className={`p-1.5 rounded-full ${isMorning ? 'bg-amber-100 text-amber-600' : 'bg-indigo-100 text-indigo-600'}`}>
-                                               {isMorning ? <Sun size={14}/> : <Moon size={14}/>}
+                                            <div className={`p-1.5 rounded-full ${
+                                                isMorning ? 'bg-amber-100 text-amber-600' 
+                                                : isDaily ? 'bg-blue-100 text-blue-600'
+                                                : 'bg-indigo-100 text-indigo-600'
+                                            }`}>
+                                               {isMorning ? <Sun size={14}/> : isDaily ? <Clock size={14} /> : <Moon size={14}/>}
                                             </div>
                                             <div>
                                                <span className="font-bold text-sm text-slate-800 dark:text-slate-200">
-                                                  {isMorning ? '아침 업무' : '저녁 업무'}
+                                                  {isMorning ? '아침 업무' : isDaily ? '일상 업무' : '저녁 업무'}
                                                </span>
                                                <span className="text-xs text-slate-500 ml-2">
                                                   {new Date(log.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
@@ -532,14 +566,14 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
         onClose={() => setConfirmingShift(null)}
         onConfirm={handleConfirmSave}
         staff={staff}
-        title={confirmingShift === 'MORNING' ? "아침 업무 완료" : "저녁 업무 완료"}
+        title={confirmingShift === 'MORNING' ? "아침 업무 완료" : confirmingShift === 'DAILY' ? "일상 업무 완료" : "저녁 업무 완료"}
         message="작업을 수행한 직원을 선택해주세요."
         confirmLabel="저장 완료"
       />
 
       {/* Config Modal */}
       {isConfigOpen && (
-        <ShockwaveConfigModal 
+        <PtRoomConfigModal 
           config={config} 
           onClose={() => setIsConfigOpen(false)}
           onSave={handleSaveConfig}
@@ -549,4 +583,4 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
   );
 };
 
-export default ShockwaveManager;
+export default PtRoomManager;

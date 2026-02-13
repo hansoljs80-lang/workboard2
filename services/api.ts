@@ -9,4 +9,5 @@ export * from './staffService';
 export * from './templateService';
 export * from './settingsService';
 export * from './laundryService';
-export * from './shockwaveService'; // New Export
+export * from './shockwaveService';
+export * from './ptRoomService'; // New Export

@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Users, Database, ClipboardList, Moon, Sun, Settings as SettingsIcon, Menu, RefreshCw, PanelLeftClose, BedDouble, Shirt, Activity } from 'lucide-react';
+import { LayoutDashboard, Users, Database, ClipboardList, Moon, Sun, Settings as SettingsIcon, Menu, RefreshCw, PanelLeftClose, BedDouble, Shirt, Activity, Stethoscope } from 'lucide-react';
 import { Tab } from '../types';
 import { useTheme } from '../context/ThemeContext';
 
@@ -106,6 +106,14 @@ const Sidebar: React.FC<SidebarProps> = ({
           icon={<Shirt size={24} />} 
           label="빨래"
           fullLabel="빨래 업무" 
+        />
+
+        <NavButton 
+          active={activeTab === Tab.PT_ROOM} 
+          onClick={() => onTabChange(Tab.PT_ROOM)} 
+          icon={<Stethoscope size={24} />} 
+          label="물리치료"
+          fullLabel="물리치료실 관리" 
         />
 
         <NavButton 
