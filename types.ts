@@ -11,7 +11,8 @@ export enum Tab {
   BOARD = 'board',
   DRAFTS = 'drafts',       // List view & Creation view combined
   STAFF = 'staff',
-  BEDS = 'beds',           // New: Bed Management
+  BEDS = 'beds',           // Bed Management
+  LAUNDRY = 'laundry',     // New: Laundry Management
   SETTINGS = 'settings',   // Now DB Settings
   GENERAL_SETTINGS = 'general_settings' // New General Settings
 }
@@ -103,4 +104,15 @@ export interface BedLog {
   performedBy: string[];
   createdAt: string;
   note?: string;
+}
+
+// --- Laundry Types ---
+
+export type LaundryAction = 'WASH' | 'DRY' | 'FOLD';
+
+export interface LaundryLog {
+  id: string;
+  actionType: LaundryAction;
+  performedBy: string[];
+  createdAt: string;
 }

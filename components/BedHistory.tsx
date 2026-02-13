@@ -4,8 +4,9 @@ import { fetchBedLogs } from '../services/bedService';
 import DateNavigator from './DateNavigator';
 import AvatarStack from './common/AvatarStack';
 import BedStats from './bed/BedStats';
-import { History, CalendarClock, AlertCircle, RefreshCw, Database } from 'lucide-react';
+import { History, CalendarClock, AlertCircle, RefreshCw, Database, Copy, Filter, X } from 'lucide-react';
 import { getWeekRange } from '../utils/dateUtils';
+import { SUPABASE_SCHEMA_SQL } from '../constants/supabaseSchema';
 
 interface BedHistoryProps {
   staff: Staff[];
@@ -19,6 +20,9 @@ const BedHistory: React.FC<BedHistoryProps> = ({ staff }) => {
   const [logs, setLogs] = useState<BedLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  // Filter State
+  const [filterBed, setFilterBed] = useState<string>('all');
 
   // Fetch Logs function
   const loadLogs = useCallback(async () => {
@@ -66,6 +70,23 @@ const BedHistory: React.FC<BedHistoryProps> = ({ staff }) => {
     loadLogs();
   }, [loadLogs]);
 
+  // Extract unique bed names for filter
+  const uniqueBeds = useMemo(() => {
+    const names = new Set(logs.map(l => l.bedName));
+    return Array.from(names).sort((a: string, b: string) => {
+        // Natural sort for "1번", "2번", "10번"
+        const numA = parseInt(a.replace(/\D/g, '')) || 0;
+        const numB = parseInt(b.replace(/\D/g, '')) || 0;
+        return numA - numB || a.localeCompare(b);
+    });
+  }, [logs]);
+
+  // Apply Filter
+  const filteredLogs = useMemo(() => {
+    if (filterBed === 'all') return logs;
+    return logs.filter(l => l.bedName === filterBed);
+  }, [logs, filterBed]);
+
   const handleNavigate = (direction: 'prev' | 'next') => {
     setCurrentDate(prev => {
       const next = new Date(prev);
@@ -76,10 +97,15 @@ const BedHistory: React.FC<BedHistoryProps> = ({ staff }) => {
     });
   };
 
-  // Group logs by date for display
+  const handleCopySQL = () => {
+    navigator.clipboard.writeText(SUPABASE_SCHEMA_SQL);
+    alert("SQL 코드가 클립보드에 복사되었습니다.\nSupabase 대시보드 > SQL Editor에서 실행해주세요.");
+  };
+
+  // Group filtered logs by date for display
   const groupedLogs = useMemo(() => {
     const groups: { date: string; items: BedLog[] }[] = [];
-    logs.forEach(log => {
+    filteredLogs.forEach(log => {
       try {
         const dateStr = new Date(log.createdAt).toLocaleDateString('ko-KR', { 
           year: 'numeric', month: 'long', day: 'numeric', weekday: 'short'
@@ -96,12 +122,12 @@ const BedHistory: React.FC<BedHistoryProps> = ({ staff }) => {
       }
     });
     return groups;
-  }, [logs]);
+  }, [filteredLogs]);
 
-  // Calculate Statistics (Who changed how many)
+  // Calculate Statistics based on filtered logs
   const stats = useMemo(() => {
     const counts: Record<string, number> = {};
-    logs.forEach(log => {
+    filteredLogs.forEach(log => {
       if (Array.isArray(log.performedBy) && log.performedBy.length > 0) {
         log.performedBy.forEach(staffId => {
           counts[staffId] = (counts[staffId] || 0) + 1;
@@ -121,46 +147,82 @@ const BedHistory: React.FC<BedHistoryProps> = ({ staff }) => {
         };
       })
       .sort((a, b) => b.count - a.count); // Descending
-  }, [logs, staff]);
+  }, [filteredLogs, staff]);
 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-slate-50 dark:bg-slate-950">
       {/* Controls */}
-      <div className="flex flex-col md:flex-row gap-4 justify-between items-center mb-4 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm shrink-0">
-        <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700">
-           {['day', 'week', 'month'].map((mode) => (
-             <button 
-               key={mode}
-               onClick={() => setViewMode(mode as ViewMode)}
-               className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${viewMode === mode ? 'bg-white dark:bg-slate-600 text-blue-600 dark:text-white shadow-sm' : 'text-slate-500'}`}
-             >
-               {{'day': '일간', 'week': '주간', 'month': '월간'}[mode]}
-             </button>
-           ))}
-        </div>
-
-        <DateNavigator 
-           currentDate={currentDate} 
-           viewMode={viewMode} 
-           onNavigate={handleNavigate}
-           onDateSelect={(d) => {
-             setCurrentDate(d);
-             setViewMode('day');
-           }}
-        />
-
-        <div className="flex items-center gap-2">
-            <div className="text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700">
-               총 <span className="text-blue-600 dark:text-blue-400 text-lg">{logs.length}</span>건
+      <div className="flex flex-col gap-4 mb-4 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm shrink-0">
+        
+        {/* Top Row: Navigation */}
+        <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
+            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700">
+            {['day', 'week', 'month'].map((mode) => (
+                <button 
+                key={mode}
+                onClick={() => setViewMode(mode as ViewMode)}
+                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${viewMode === mode ? 'bg-white dark:bg-slate-600 text-blue-600 dark:text-white shadow-sm' : 'text-slate-500'}`}
+                >
+                {{'day': '일간', 'week': '주간', 'month': '월간'}[mode]}
+                </button>
+            ))}
             </div>
-            <button 
-              onClick={loadLogs}
-              className="p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-500 transition-colors shadow-sm active:scale-95"
-              title="새로고침"
-            >
-              <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
-            </button>
+
+            <DateNavigator 
+            currentDate={currentDate} 
+            viewMode={viewMode} 
+            onNavigate={handleNavigate}
+            onDateSelect={(d) => {
+                setCurrentDate(d);
+                setViewMode('day');
+            }}
+            />
+
+            <div className="flex items-center gap-2">
+                <div className="text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700">
+                총 <span className="text-blue-600 dark:text-blue-400 text-lg">{filteredLogs.length}</span>건
+                </div>
+                <button 
+                onClick={loadLogs}
+                className="p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-500 transition-colors shadow-sm active:scale-95"
+                title="새로고침"
+                >
+                <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
+                </button>
+            </div>
         </div>
+
+        {/* Bottom Row: Filters (Only show if there are logs or filter is active) */}
+        {(logs.length > 0 || filterBed !== 'all') && (
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar">
+                <div className="flex items-center gap-1.5 px-2 text-xs font-bold text-slate-500 whitespace-nowrap">
+                    <Filter size={14} /> 필터:
+                </div>
+                <button
+                    onClick={() => setFilterBed('all')}
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${
+                        filterBed === 'all' 
+                        ? 'bg-slate-800 dark:bg-slate-700 text-white border-slate-800 dark:border-slate-700' 
+                        : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50'
+                    }`}
+                >
+                    전체 보기
+                </button>
+                {uniqueBeds.map(bedName => (
+                    <button
+                        key={bedName}
+                        onClick={() => setFilterBed(bedName)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${
+                            filterBed === bedName
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                            : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50'
+                        }`}
+                    >
+                        {bedName}
+                    </button>
+                ))}
+            </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-hidden flex flex-col md:flex-row gap-4">
@@ -185,14 +247,16 @@ const BedHistory: React.FC<BedHistoryProps> = ({ staff }) => {
                   <p className="text-sm mb-4 max-w-sm">
                     배드 교체 이력을 저장하려면 DB에 <code>bed_logs</code> 테이블이 필요합니다.
                   </p>
-                  <div className="text-xs bg-white dark:bg-black/20 p-3 rounded-lg text-left inline-block mb-4 border border-amber-200 dark:border-amber-800">
-                    1. <strong>DB 설정</strong> 메뉴로 이동<br/>
-                    2. <strong>Supabase Schema</strong> 복사<br/>
-                    3. Supabase SQL Editor에서 실행
+                  
+                  <div className="flex gap-2">
+                    <button onClick={handleCopySQL} className="px-4 py-2 bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100 rounded-lg font-bold hover:bg-amber-300 dark:hover:bg-amber-700 transition-colors flex items-center gap-2">
+                      <Copy size={16} /> SQL 복사
+                    </button>
+                    <button onClick={loadLogs} className="px-4 py-2 bg-amber-500 text-white rounded-lg font-bold hover:bg-amber-600 transition-colors">
+                      다시 시도
+                    </button>
                   </div>
-                  <button onClick={loadLogs} className="px-4 py-2 bg-amber-500 text-white rounded-lg font-bold hover:bg-amber-600 transition-colors">
-                    테이블 생성 후 다시 시도
-                  </button>
+                  <p className="text-xs mt-3 opacity-70">Supabase SQL Editor에서 실행해주세요.</p>
                </div>
             ) : error ? (
                <div className="flex flex-col items-center justify-center h-full text-red-500 bg-red-50 dark:bg-red-900/10 rounded-xl border border-red-200 dark:border-red-800/50 p-6 text-center">
@@ -203,13 +267,12 @@ const BedHistory: React.FC<BedHistoryProps> = ({ staff }) => {
                     다시 시도
                   </button>
                </div>
-            ) : logs.length === 0 ? (
+            ) : filteredLogs.length === 0 ? (
                <div className="flex flex-col items-center justify-center h-full text-slate-400 dark:text-slate-600 text-center p-4">
                   <History size={48} className="opacity-20 mb-3" />
                   <p className="font-bold">기록이 없습니다.</p>
                   <p className="text-xs mt-1 opacity-70">
-                    해당 기간에 교체된 배드 커버가 없습니다.<br/>
-                    '현황' 탭에서 교체 작업을 수행하면 이곳에 기록됩니다.
+                    {filterBed !== 'all' ? `선택한 '${filterBed}'의 기록이 없습니다.` : '해당 기간에 교체된 배드 커버가 없습니다.'}
                   </p>
                </div>
             ) : (

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { LayoutDashboard, Users, Database, ClipboardList, Moon, Sun, Settings as SettingsIcon, Menu, RefreshCw, PanelLeftClose, BedDouble } from 'lucide-react';
+import { LayoutDashboard, Users, Database, ClipboardList, Moon, Sun, Settings as SettingsIcon, Menu, RefreshCw, PanelLeftClose, BedDouble, Shirt } from 'lucide-react';
 import { Tab } from '../types';
 import { useTheme } from '../context/ThemeContext';
 
@@ -97,8 +97,16 @@ const Sidebar: React.FC<SidebarProps> = ({
           active={activeTab === Tab.BEDS} 
           onClick={() => onTabChange(Tab.BEDS)} 
           icon={<BedDouble size={24} />} 
-          label="배드 커버"
+          label="배드"
           fullLabel="배드 커버 관리" 
+        />
+
+        <NavButton 
+          active={activeTab === Tab.LAUNDRY} 
+          onClick={() => onTabChange(Tab.LAUNDRY)} 
+          icon={<Shirt size={24} />} 
+          label="빨래"
+          fullLabel="빨래 업무" 
         />
 
         <div className="hidden md:block h-px bg-slate-200 dark:bg-slate-800 my-2 mx-2 shrink-0"></div>

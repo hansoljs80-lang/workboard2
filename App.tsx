@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Database } from 'lucide-react';
 import Board from './components/Board';
@@ -7,6 +6,7 @@ import Settings from './components/Settings';
 import GeneralSettings from './components/GeneralSettings';
 import DraftManager from './components/DraftManager';
 import BedManager from './components/BedManager';
+import LaundryManager from './components/LaundryManager'; // New Import
 import Layout from './components/Layout';
 import { useAppData } from './hooks/useAppData';
 import { Tab } from './types';
@@ -69,6 +69,10 @@ const App: React.FC = () => {
             onRefresh={loadData} 
             onNavigateToBoard={() => setActiveTab(Tab.BOARD)}
           />
+        );
+      case Tab.LAUNDRY: // New Case
+        return (
+          <LaundryManager staff={staff} />
         );
       case Tab.STAFF:
         // Pass tasks and templates to enable Safe Delete logic

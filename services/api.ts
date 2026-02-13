@@ -7,3 +7,4 @@ export * from './taskService';
 export * from './staffService';
 export * from './templateService';
 export * from './settingsService';
+export * from './laundryService'; // Export new service
