@@ -1,6 +1,7 @@
 {
   "extends": "@parcel/config-default",
   "transformers": {
-    "manifest.json": ["@parcel/transformer-raw"]
+    "manifest.json": ["@parcel/transformer-raw"],
+    "*.webmanifest": ["@parcel/transformer-raw"]
   }
 }
