@@ -19,6 +19,12 @@ const DEFAULT_CONFIG: PtRoomConfig = {
     { id: 'power_off', label: '모든 기기 전원 끄기' },
     { id: 'window', label: '창문 닫기 및 잠금 확인' },
     { id: 'trash_final', label: '쓰레기 최종 정리' }
+  ],
+  periodicItems: [
+    { id: 'deep_clean', label: '치료실 대청소', interval: 30 },
+    { id: 'filter', label: '공기청정기 필터 세척', interval: 14 },
+    { id: 'inventory', label: '비품 재고 파악 및 발주', interval: 7 },
+    { id: 'machine_safety', label: '의료기기 안전 점검', interval: 30 }
   ]
 };
 
@@ -37,7 +43,22 @@ export const getPtRoomConfig = async (): Promise<PtRoomConfig> => {
       return DEFAULT_CONFIG;
     }
 
-    return JSON.parse(data.value) as PtRoomConfig;
+    const parsed = JSON.parse(data.value) as PtRoomConfig;
+    
+    // Migration: Ensure periodicItems exists and has interval structure
+    if (!parsed.periodicItems) {
+      parsed.periodicItems = DEFAULT_CONFIG.periodicItems;
+    } else {
+      // Map old simple items to new structure if needed
+      parsed.periodicItems = parsed.periodicItems.map((item: any) => {
+        if (typeof item.interval === 'undefined') {
+          return { ...item, interval: 30 }; // Default to 30 days if missing
+        }
+        return item;
+      });
+    }
+    
+    return parsed;
   } catch (e) {
     console.error("Failed to load PT Room config", e);
     return DEFAULT_CONFIG;
@@ -57,6 +78,19 @@ export const savePtRoomConfig = async (config: PtRoomConfig): Promise<{ success:
 
     if (error) throw error;
     return { success: true };
+  } catch (e: any) {
+    return { success: false, message: e.message };
+  }
+};
+
+export const updatePeriodicItemDate = async (itemId: string, date: string): Promise<{ success: boolean; message?: string }> => {
+  try {
+    const config = await getPtRoomConfig();
+    const newItems = config.periodicItems.map(item => 
+      item.id === itemId ? { ...item, lastCompleted: date } : item
+    );
+    
+    return await savePtRoomConfig({ ...config, periodicItems: newItems });
   } catch (e: any) {
     return { success: false, message: e.message };
   }

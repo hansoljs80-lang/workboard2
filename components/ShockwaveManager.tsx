@@ -252,8 +252,6 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
     const todayLogs = getTodayLogs(shift);
     const lastLog = todayLogs.length > 0 ? todayLogs[0] : null;
 
-    // Logic Update: If a log exists for today, show those items as checked visually (for feedback).
-    // If user is editing (has selected items manually), prioritize manual selection.
     const effectiveChecks = (lastLog && checkedState.length === 0) 
         ? lastLog.checklist.filter(c => c.checked).map(c => c.id) 
         : checkedState;
@@ -268,7 +266,7 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
             </div>
             {lastLog && (
                 <div className="text-xs font-medium px-2 py-1 bg-white/50 rounded-md flex items-center gap-1">
-                    <CheckSquare size={12} /> 완료됨 ({new Date(lastLog.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})})
+                    <CheckSquare size={12} /> 완료 ({new Date(lastLog.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})})
                 </div>
             )}
          </div>
@@ -287,14 +285,14 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
                         onClick={() => toggleCheck(shift, item.id)}
                         className={`w-full flex items-start gap-3 p-3 rounded-xl border text-left transition-all ${
                             isChecked 
-                            ? 'bg-white dark:bg-slate-800 border-transparent shadow-sm' 
+                            ? 'bg-white dark:bg-slate-800 border-emerald-200 dark:border-emerald-900/50 shadow-sm' 
                             : 'bg-white/40 dark:bg-slate-800/40 border-black/5 dark:border-white/5 hover:bg-white/60'
                         }`}
                     >
-                        <div className={`mt-0.5 shrink-0 transition-colors ${isChecked ? 'text-green-600 dark:text-green-400' : 'text-slate-400'}`}>
+                        <div className={`mt-0.5 shrink-0 transition-colors ${isChecked ? 'text-emerald-500' : 'text-slate-400'}`}>
                             {isChecked ? <CheckSquare size={20} /> : <Square size={20} />}
                         </div>
-                        <span className={`text-sm font-medium ${isChecked ? 'text-slate-800 dark:text-slate-100' : 'text-slate-600 dark:text-slate-400'}`}>
+                        <span className={`text-sm font-medium transition-all ${isChecked ? 'text-slate-400 dark:text-slate-500 line-through decoration-slate-300 dark:decoration-slate-600' : 'text-slate-700 dark:text-slate-200'}`}>
                             {item.label}
                         </span>
                     </button>

@@ -1,5 +1,4 @@
 
-
 export enum TaskStatus {
   TODO = '할일',
   IN_PROGRESS = '진행중',
@@ -15,6 +14,7 @@ export enum Tab {
   LAUNDRY = 'laundry',     // Laundry Management
   SHOCKWAVE = 'shockwave', // Shockwave Management
   PT_ROOM = 'pt_room',     // New: PT Room Management
+  CHANGING_ROOM = 'changing_room', // New: Changing Room Management
   SETTINGS = 'settings',   // Now DB Settings
   GENERAL_SETTINGS = 'general_settings' // New General Settings
 }
@@ -142,14 +142,21 @@ export interface ShockwaveConfig {
   eveningItems: { id: string; label: string }[];
 }
 
-// --- PT Room Types (New) ---
+// --- PT Room Types ---
 
-export type PtRoomShift = 'MORNING' | 'DAILY' | 'EVENING';
+export type PtRoomShift = 'MORNING' | 'DAILY' | 'EVENING' | 'PERIODIC';
 
 export interface PtRoomChecklistItem {
   id: string;
   label: string;
   checked: boolean;
+}
+
+export interface PtPeriodicItem {
+  id: string;
+  label: string;
+  interval: number; // Days
+  lastCompleted?: string; // ISO Date String
 }
 
 export interface PtRoomLog {
@@ -164,4 +171,29 @@ export interface PtRoomConfig {
   morningItems: { id: string; label: string }[];
   dailyItems: { id: string; label: string }[];
   eveningItems: { id: string; label: string }[];
+  periodicItems: PtPeriodicItem[];
+}
+
+// --- Changing Room Types (New) ---
+
+export type ChangingRoomShift = 'MORNING' | 'LUNCH' | 'ADHOC';
+
+export interface ChangingRoomChecklistItem {
+  id: string;
+  label: string;
+  checked: boolean;
+}
+
+export interface ChangingRoomLog {
+  id: string;
+  shiftType: ChangingRoomShift;
+  checklist: ChangingRoomChecklistItem[];
+  performedBy: string[];
+  createdAt: string;
+}
+
+export interface ChangingRoomConfig {
+  morningItems: { id: string; label: string }[];
+  lunchItems: { id: string; label: string }[];
+  adhocItems: { id: string; label: string }[];
 }

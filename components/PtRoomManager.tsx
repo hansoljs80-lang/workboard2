@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Staff, PtRoomShift, PtRoomLog, PtRoomChecklistItem, PtRoomConfig } from '../types';
-import { Stethoscope, Sun, Moon, Clock, LayoutGrid, History, CheckSquare, Square, Save, AlertCircle, Copy, Filter, Settings } from 'lucide-react';
+import { Staff, PtRoomShift, PtRoomLog, PtRoomChecklistItem, PtRoomConfig, PtPeriodicItem } from '../types';
+import { Stethoscope, Sun, Moon, Clock, LayoutGrid, History, CheckSquare, Square, Save, AlertCircle, Copy, Filter, Settings, CalendarRange, Check, AlertTriangle, RefreshCw, CheckCircle2 } from 'lucide-react';
 import StatusOverlay, { OperationStatus } from './StatusOverlay';
 import StaffSelectionModal from './common/StaffSelectionModal';
-import { fetchPtRoomLogs, logPtRoomAction, getPtRoomConfig, savePtRoomConfig } from '../services/ptRoomService';
+import { fetchPtRoomLogs, logPtRoomAction, getPtRoomConfig, savePtRoomConfig, updatePeriodicItemDate } from '../services/ptRoomService';
 import DateNavigator from './DateNavigator';
 import AvatarStack from './common/AvatarStack';
 import PtRoomStats from './pt/PtRoomStats';
@@ -24,13 +24,17 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
   const [opMessage, setOpMessage] = useState('');
 
   // Config State
-  const [config, setConfig] = useState<PtRoomConfig>({ morningItems: [], dailyItems: [], eveningItems: [] });
+  const [config, setConfig] = useState<PtRoomConfig>({ morningItems: [], dailyItems: [], eveningItems: [], periodicItems: [] });
   const [isConfigOpen, setIsConfigOpen] = useState(false);
 
   // Checklist State
   const [morningChecks, setMorningChecks] = useState<string[]>([]);
   const [dailyChecks, setDailyChecks] = useState<string[]>([]);
   const [eveningChecks, setEveningChecks] = useState<string[]>([]);
+  
+  // Periodic Selection State
+  const [selectedPeriodicId, setSelectedPeriodicId] = useState<string | null>(null);
+
   const [confirmingShift, setConfirmingShift] = useState<PtRoomShift | null>(null);
 
   // Data Logic
@@ -119,16 +123,16 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
   };
 
   const handleSaveClick = (shift: PtRoomShift) => {
-    // If attempting to save with no checks, confirm first
     const checks = shift === 'MORNING' ? morningChecks : shift === 'DAILY' ? dailyChecks : eveningChecks;
-    
-    // BUT if there is already a log for today, we might be "adding" to it or overwriting.
-    // For simplicity, we just save a new log entry.
-    
     if (checks.length === 0) {
       if(!window.confirm("체크된 항목이 없습니다. 그래도 저장하시겠습니까?")) return;
     }
     setConfirmingShift(shift);
+  };
+
+  const handlePeriodicClick = (itemId: string) => {
+    setSelectedPeriodicId(itemId);
+    setConfirmingShift('PERIODIC');
   };
 
   const handleConfirmSave = async (staffIds: string[]) => {
@@ -137,10 +141,48 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
     setOpStatus('loading');
     setOpMessage('저장 중...');
 
-    const items = confirmingShift === 'MORNING' ? config.morningItems : confirmingShift === 'DAILY' ? config.dailyItems : config.eveningItems;
-    const checks = confirmingShift === 'MORNING' ? morningChecks : confirmingShift === 'DAILY' ? dailyChecks : eveningChecks;
+    // Handling Periodic Task separately (Update Config + Log)
+    if (confirmingShift === 'PERIODIC') {
+       if (!selectedPeriodicId) return;
+       const targetItem = config.periodicItems.find(i => i.id === selectedPeriodicId);
+       if (!targetItem) return;
+
+       // 1. Log Action
+       const checklistData: PtRoomChecklistItem[] = [{
+         id: targetItem.id,
+         label: `${targetItem.label} (정기)`,
+         checked: true
+       }];
+       await logPtRoomAction('PERIODIC', checklistData, staffIds);
+
+       // 2. Update Next Due Date in Config
+       const today = new Date().toISOString();
+       await updatePeriodicItemDate(selectedPeriodicId, today);
+       
+       // 3. Refresh Config
+       await loadConfig();
+       
+       setOpStatus('success');
+       setOpMessage('완료 처리됨');
+       setSelectedPeriodicId(null);
+       loadLogs(); // Update history list
+       
+       setTimeout(() => setOpStatus('idle'), 1000);
+       return;
+    }
+
+    // Standard Shifts
+    const items = 
+      confirmingShift === 'MORNING' ? config.morningItems : 
+      confirmingShift === 'DAILY' ? config.dailyItems : 
+      config.eveningItems;
     
-    const checklistData: PtRoomChecklistItem[] = items.map(item => ({
+    const checks = 
+      confirmingShift === 'MORNING' ? morningChecks : 
+      confirmingShift === 'DAILY' ? dailyChecks : 
+      eveningChecks;
+    
+    const checklistData: PtRoomChecklistItem[] = (items || []).map(item => ({
       id: item.id,
       label: item.label,
       checked: checks.includes(item.id)
@@ -247,6 +289,93 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
     return groups;
   }, [filteredLogs]);
 
+  // --- Render Helpers ---
+
+  const calculateStatus = (item: PtPeriodicItem) => {
+    if (!item.lastCompleted) return { status: 'danger', label: '기록 없음', diff: -999 };
+    
+    const last = new Date(item.lastCompleted);
+    const today = new Date();
+    last.setHours(0,0,0,0);
+    today.setHours(0,0,0,0);
+    
+    const passed = Math.floor((today.getTime() - last.getTime()) / (1000 * 60 * 60 * 24));
+    const remaining = item.interval - passed;
+    
+    if (passed === 0) return { status: 'today', label: '오늘 완료', diff: 0 };
+    if (remaining < 0) return { status: 'danger', label: `${Math.abs(remaining)}일 초과`, diff: remaining };
+    if (remaining <= 3) return { status: 'warning', label: `${remaining}일 남음`, diff: remaining };
+    return { status: 'success', label: `${remaining}일 남음`, diff: remaining };
+  };
+
+  const renderPeriodicList = () => {
+    // Sort items by urgency (overdue > warning > safe)
+    const sortedItems = [...config.periodicItems].sort((a, b) => {
+        const statA = calculateStatus(a);
+        const statB = calculateStatus(b);
+        return statA.diff - statB.diff;
+    });
+
+    return (
+      <div className="flex flex-col h-full rounded-2xl border-2 border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-900/10 shadow-sm overflow-hidden">
+         <div className="p-4 flex items-center justify-between border-b border-black/5 dark:border-white/5 shrink-0">
+            <div className="flex items-center gap-3">
+               <div className="p-2 bg-white/50 rounded-lg shadow-sm"><CalendarRange className="text-purple-500" /></div>
+               <h3 className="text-lg font-bold text-purple-900 dark:text-purple-100">정기 업무 현황</h3>
+            </div>
+         </div>
+         <div className="flex-1 p-4 overflow-y-auto custom-scrollbar space-y-3">
+            {sortedItems.length === 0 && (
+                <div className="text-center text-sm opacity-50 py-10">설정에서 정기 업무를 추가해주세요.</div>
+            )}
+            {sortedItems.map(item => {
+               const { status, label } = calculateStatus(item);
+               let colorClass = '';
+               let icon = null;
+               
+               if (status === 'danger') {
+                   colorClass = 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-200 border-red-200';
+                   icon = <AlertTriangle size={16} className="shrink-0" />;
+               } else if (status === 'warning') {
+                   colorClass = 'bg-orange-100 dark:bg-orange-900/40 text-orange-800 dark:text-orange-200 border-orange-200';
+                   icon = <Clock size={16} className="shrink-0" />;
+               } else if (status === 'today') {
+                   colorClass = 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200 border-blue-200';
+                   icon = <CheckCircle2 size={16} className="shrink-0" />;
+               } else {
+                   colorClass = 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700';
+                   icon = <Check size={16} className="shrink-0 text-slate-400" />;
+               }
+
+               return (
+                 <div key={item.id} className={`p-3 rounded-xl border flex items-center justify-between shadow-sm transition-all ${colorClass}`}>
+                    <div className="flex flex-col min-w-0 pr-2">
+                       <span className="font-bold text-sm truncate">{item.label}</span>
+                       <div className="flex items-center gap-1.5 text-xs opacity-80 mt-0.5">
+                          {icon}
+                          <span>{label}</span>
+                          <span className="opacity-50">| 주기: {item.interval}일</span>
+                       </div>
+                    </div>
+                    
+                    <button 
+                      onClick={() => handlePeriodicClick(item.id)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm shrink-0 flex items-center gap-1 transition-colors ${
+                        status === 'today' 
+                          ? 'bg-white/80 dark:bg-slate-700 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-slate-600'
+                          : 'bg-white dark:bg-slate-700 text-purple-700 dark:text-purple-300 border border-purple-100 dark:border-purple-800/50 hover:bg-purple-50 dark:hover:bg-purple-900/50'
+                      }`}
+                    >
+                       <RefreshCw size={12} /> {status === 'today' ? '갱신' : '완료'}
+                    </button>
+                 </div>
+               );
+            })}
+         </div>
+      </div>
+    );
+  };
+
   const renderChecklistCard = (
     shift: PtRoomShift, 
     title: string, 
@@ -258,45 +387,26 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
     const todayLogs = getTodayLogs(shift);
     const lastLog = todayLogs.length > 0 ? todayLogs[0] : null;
 
-    // Visual feedback logic: If completed today, use the checked state from the log.
-    // If not completed or user is actively editing (implied by non-empty checkedState if we wanted strict separation, 
-    // but here we mix them. If log exists, show it. If user clicks, it updates local state.)
-    // *Simplified:* If log exists, we show those checks as visual feedback but allow clicking to start a "new" entry state or just update visual.
-    // To keep it simple: If log exists, we use its checks for display IF local checkedState is empty (initial render state).
-    // Actually, let's just overlay.
-    
-    const displayChecks = lastLog && checkedState.length === 0 
-        ? lastLog.checklist.filter(i => i.checked).map(i => i.id) 
-        : checkedState;
-
-    // If lastLog exists, we can consider the task "Done" for the day, but user might want to add another.
-    // We'll show the checks from the last log as "read-only visual" or pre-filled.
-    // Let's make them pre-filled.
-    
-    // To allow "Add another", we need to distinguish.
-    // User request: "If completed, checkbox checked visually."
-    // Implementation: If `lastLog` exists, rendering checks based on `lastLog` if `checkedState` is empty.
-    
     const effectiveChecks = (lastLog && checkedState.length === 0) 
         ? lastLog.checklist.filter(c => c.checked).map(c => c.id) 
         : checkedState;
 
     return (
       <div className={`flex flex-col h-full rounded-2xl border-2 transition-all shadow-sm overflow-hidden ${theme}`}>
-         <div className="p-4 flex items-center justify-between border-b border-black/5 dark:border-white/5">
+         <div className="p-4 flex items-center justify-between border-b border-black/5 dark:border-white/5 shrink-0">
             <div className="flex items-center gap-3">
                <div className="p-2 bg-white/50 rounded-lg shadow-sm">{icon}</div>
                <h3 className="text-lg font-bold">{title}</h3>
             </div>
             {lastLog && (
-                <div className="text-xs font-medium px-2 py-1 bg-white/50 rounded-md flex items-center gap-1">
-                    <CheckSquare size={12} /> 완료 ({new Date(lastLog.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})})
+                <div className="text-[10px] font-bold px-2 py-1 bg-white/50 rounded-md flex items-center gap-1">
+                    <CheckSquare size={10} /> 완료 ({new Date(lastLog.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})})
                 </div>
             )}
          </div>
 
          <div className="flex-1 p-4 overflow-y-auto custom-scrollbar bg-white/30 dark:bg-black/10">
-            {items.length === 0 ? (
+            {(!items || items.length === 0) ? (
                <div className="text-center text-sm opacity-50 py-10">설정에서 업무를 추가해주세요.</div>
             ) : (
                 <div className="space-y-2">
@@ -308,14 +418,14 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
                         onClick={() => toggleCheck(shift, item.id)}
                         className={`w-full flex items-start gap-3 p-3 rounded-xl border text-left transition-all ${
                             isChecked 
-                            ? 'bg-white dark:bg-slate-800 border-transparent shadow-sm' 
+                            ? 'bg-white dark:bg-slate-800 border-emerald-200 dark:border-emerald-900/50 shadow-sm' 
                             : 'bg-white/40 dark:bg-slate-800/40 border-black/5 dark:border-white/5 hover:bg-white/60'
                         }`}
                     >
-                        <div className={`mt-0.5 shrink-0 transition-colors ${isChecked ? 'text-green-600 dark:text-green-400' : 'text-slate-400'}`}>
+                        <div className={`mt-0.5 shrink-0 transition-colors ${isChecked ? 'text-emerald-500' : 'text-slate-400'}`}>
                             {isChecked ? <CheckSquare size={20} /> : <Square size={20} />}
                         </div>
-                        <span className={`text-sm font-medium ${isChecked ? 'text-slate-800 dark:text-slate-100' : 'text-slate-600 dark:text-slate-400'}`}>
+                        <span className={`text-sm font-medium transition-all ${isChecked ? 'text-slate-400 dark:text-slate-500 line-through decoration-slate-300 dark:decoration-slate-600' : 'text-slate-700 dark:text-slate-200'}`}>
                             {item.label}
                         </span>
                     </button>
@@ -325,10 +435,10 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
             )}
          </div>
 
-         <div className="p-4 border-t border-black/5 dark:border-white/5 bg-white/20">
+         <div className="p-4 border-t border-black/5 dark:border-white/5 bg-white/20 shrink-0">
             <button
               onClick={() => handleSaveClick(shift)}
-              disabled={items.length === 0}
+              disabled={!items || items.length === 0}
               className="w-full py-3 bg-white dark:bg-slate-800 rounded-xl font-bold shadow-sm hover:shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 text-sm disabled:opacity-50 disabled:scale-100"
             >
                <Save size={16} /> 기록 저장
@@ -338,7 +448,7 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
                     <p className="text-[10px] font-bold opacity-60 mb-2">오늘의 기록 ({todayLogs.length}건)</p>
                     <div className="space-y-1 max-h-[60px] overflow-y-auto custom-scrollbar">
                         {todayLogs.map(log => (
-                            <div key={log.id} className="flex justify-between items-center text-xs px-2 py-1 bg-white/40 rounded">
+                            <div key={log.id} className="flex justify-between items-center text-[10px] px-2 py-1 bg-white/40 rounded">
                                 <span>{new Date(log.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
                                 <AvatarStack ids={log.performedBy} staff={staff} size="xs" max={3} />
                             </div>
@@ -363,7 +473,7 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
           <div>
             <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">물리치료실 관리</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400">
-               치료실 환경 및 장비 상태를 시간대별로 점검합니다.
+               치료실 환경 및 장비 상태를 주기별로 점검합니다.
             </p>
           </div>
         </div>
@@ -408,8 +518,8 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
               </div>
            )}
            
-           {/* Responsive Grid for 3 Cards */}
-           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full overflow-y-auto pb-4 custom-scrollbar">
+           {/* Responsive Grid for 4 Cards */}
+           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 h-full overflow-y-auto pb-4 custom-scrollbar">
               {renderChecklistCard(
                 'MORNING', 
                 '아침 업무', 
@@ -434,6 +544,9 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
                 eveningChecks,
                 'bg-indigo-50/50 dark:bg-indigo-900/10 border-indigo-200 dark:border-indigo-800 text-indigo-900 dark:text-indigo-100'
               )}
+              
+              {/* New Periodic Card */}
+              {renderPeriodicList()}
            </div>
         </div>
       ) : (
@@ -477,7 +590,7 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
                  <div className="flex items-center gap-1.5 px-2 text-xs font-bold text-slate-500 whitespace-nowrap">
                     <Filter size={14} /> 필터:
                  </div>
-                 {['ALL', 'MORNING', 'DAILY', 'EVENING'].map((type) => (
+                 {['ALL', 'MORNING', 'DAILY', 'EVENING', 'PERIODIC'].map((type) => (
                     <button
                         key={type}
                         onClick={() => setTypeFilter(type as any)}
@@ -487,7 +600,7 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
                             : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50'
                         }`}
                     >
-                        {type === 'ALL' ? '전체' : type === 'MORNING' ? '아침' : type === 'DAILY' ? '일상' : '저녁'}
+                        {type === 'ALL' ? '전체' : type === 'MORNING' ? '아침' : type === 'DAILY' ? '일상' : type === 'EVENING' ? '저녁' : '정기'}
                     </button>
                  ))}
               </div>
@@ -507,11 +620,14 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
                              {group.items.map(log => {
                                 const isMorning = log.shiftType === 'MORNING';
                                 const isDaily = log.shiftType === 'DAILY';
+                                const isPeriodic = log.shiftType === 'PERIODIC';
                                 const themeClass = isMorning 
                                    ? 'border-amber-200 bg-amber-50 dark:bg-amber-900/10 dark:border-amber-800' 
                                    : isDaily 
                                      ? 'border-blue-200 bg-blue-50 dark:bg-blue-900/10 dark:border-blue-800'
-                                     : 'border-indigo-200 bg-indigo-50 dark:bg-indigo-900/10 dark:border-indigo-800';
+                                     : isPeriodic
+                                       ? 'border-purple-200 bg-purple-50 dark:bg-purple-900/10 dark:border-purple-800'
+                                       : 'border-indigo-200 bg-indigo-50 dark:bg-indigo-900/10 dark:border-indigo-800';
                                 
                                 return (
                                    <div key={log.id} className={`p-3 rounded-xl border ${themeClass}`}>
@@ -520,13 +636,14 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
                                             <div className={`p-1.5 rounded-full ${
                                                 isMorning ? 'bg-amber-100 text-amber-600' 
                                                 : isDaily ? 'bg-blue-100 text-blue-600'
+                                                : isPeriodic ? 'bg-purple-100 text-purple-600'
                                                 : 'bg-indigo-100 text-indigo-600'
                                             }`}>
-                                               {isMorning ? <Sun size={14}/> : isDaily ? <Clock size={14} /> : <Moon size={14}/>}
+                                               {isMorning ? <Sun size={14}/> : isDaily ? <Clock size={14} /> : isPeriodic ? <CalendarRange size={14} /> : <Moon size={14}/>}
                                             </div>
                                             <div>
                                                <span className="font-bold text-sm text-slate-800 dark:text-slate-200">
-                                                  {isMorning ? '아침 업무' : isDaily ? '일상 업무' : '저녁 업무'}
+                                                  {isMorning ? '아침 업무' : isDaily ? '일상 업무' : isPeriodic ? '정기/비정기 업무' : '저녁 업무'}
                                                </span>
                                                <span className="text-xs text-slate-500 ml-2">
                                                   {new Date(log.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
@@ -563,10 +680,18 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
       {/* Staff Selection Modal */}
       <StaffSelectionModal
         isOpen={confirmingShift !== null}
-        onClose={() => setConfirmingShift(null)}
+        onClose={() => {
+           setConfirmingShift(null);
+           setSelectedPeriodicId(null);
+        }}
         onConfirm={handleConfirmSave}
         staff={staff}
-        title={confirmingShift === 'MORNING' ? "아침 업무 완료" : confirmingShift === 'DAILY' ? "일상 업무 완료" : "저녁 업무 완료"}
+        title={
+          confirmingShift === 'MORNING' ? "아침 업무 완료" : 
+          confirmingShift === 'DAILY' ? "일상 업무 완료" : 
+          confirmingShift === 'PERIODIC' ? "정기 업무 완료" : 
+          "저녁 업무 완료"
+        }
         message="작업을 수행한 직원을 선택해주세요."
         confirmLabel="저장 완료"
       />

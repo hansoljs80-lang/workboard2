@@ -1,7 +1,7 @@
 
 
 export const SUPABASE_SCHEMA_SQL = `
--- 물리치료실 업무 보드 Supabase 초기화 스크립트 (v13 - Add PT Room Logs)
+-- 물리치료실 업무 보드 Supabase 초기화 스크립트 (v14 - Add Changing Room Logs)
 -- Supabase 대시보드 > SQL Editor에 복사하여 실행하세요.
 
 -- 1. UUID 확장 기능 활성화 (필수)
@@ -78,7 +78,7 @@ create table if not exists public.shockwave_logs (
     created_at timestamptz default now()
 );
 
--- 9. PT ROOM LOGS (물리치료실 관리 로그) 테이블 -- NEW
+-- 9. PT ROOM LOGS (물리치료실 관리 로그) 테이블
 create table if not exists public.pt_room_logs (
     id text default uuid_generate_v4()::text primary key,
     shift_type text not null, -- 'MORNING', 'DAILY', 'EVENING'
@@ -87,7 +87,16 @@ create table if not exists public.pt_room_logs (
     created_at timestamptz default now()
 );
 
--- 10. 인덱스 설정 (성능 최적화)
+-- 10. CHANGING ROOM LOGS (탈의실 관리 로그) 테이블 -- NEW
+create table if not exists public.changing_room_logs (
+    id text default uuid_generate_v4()::text primary key,
+    shift_type text not null, -- 'MORNING', 'LUNCH', 'ADHOC'
+    checklist jsonb default '[]'::jsonb,
+    performed_by jsonb default '[]'::jsonb,
+    created_at timestamptz default now()
+);
+
+-- 11. 인덱스 설정 (성능 최적화)
 alter table public.tasks drop constraint if exists fk_tasks_template;
 alter table public.tasks add constraint fk_tasks_template foreign key (source_template_id) references public.templates(id) on delete set null;
 
@@ -96,13 +105,14 @@ create index if not exists idx_bed_logs_created_at on public.bed_logs(created_at
 create index if not exists idx_laundry_logs_created_at on public.laundry_logs(created_at);
 create index if not exists idx_shockwave_logs_created_at on public.shockwave_logs(created_at);
 create index if not exists idx_pt_room_logs_created_at on public.pt_room_logs(created_at);
+create index if not exists idx_changing_room_logs_created_at on public.changing_room_logs(created_at);
 
--- 11. 초기 관리자 계정 생성
+-- 12. 초기 관리자 계정 생성
 insert into public.staff (name, role, color, is_active)
 select '관리자', '실장', '#EF4444', true
 where not exists (select 1 from public.staff);
 
--- 12. RLS 및 권한 설정 (핵심: 익명 사용자 쓰기 허용)
+-- 13. RLS 및 권한 설정 (핵심: 익명 사용자 쓰기 허용)
 alter table public.staff enable row level security;
 alter table public.templates enable row level security;
 alter table public.tasks enable row level security;
@@ -111,6 +121,7 @@ alter table public.bed_logs enable row level security;
 alter table public.laundry_logs enable row level security;
 alter table public.shockwave_logs enable row level security;
 alter table public.pt_room_logs enable row level security;
+alter table public.changing_room_logs enable row level security;
 
 -- 기존 정책 삭제 (중복 방지)
 drop policy if exists "Enable all access for all users" on public.staff;
@@ -121,6 +132,7 @@ drop policy if exists "Enable all access for all users" on public.bed_logs;
 drop policy if exists "Enable all access for all users" on public.laundry_logs;
 drop policy if exists "Enable all access for all users" on public.shockwave_logs;
 drop policy if exists "Enable all access for all users" on public.pt_room_logs;
+drop policy if exists "Enable all access for all users" on public.changing_room_logs;
 
 -- 새 정책 생성
 create policy "Enable all access for all users" on public.staff for all using (true) with check (true);
@@ -131,6 +143,7 @@ create policy "Enable all access for all users" on public.bed_logs for all using
 create policy "Enable all access for all users" on public.laundry_logs for all using (true) with check (true);
 create policy "Enable all access for all users" on public.shockwave_logs for all using (true) with check (true);
 create policy "Enable all access for all users" on public.pt_room_logs for all using (true) with check (true);
+create policy "Enable all access for all users" on public.changing_room_logs for all using (true) with check (true);
 
 -- 권한 부여 (Permission Grant - 필수)
 grant all on table public.staff to anon, authenticated, service_role;
@@ -141,4 +154,5 @@ grant all on table public.bed_logs to anon, authenticated, service_role;
 grant all on table public.laundry_logs to anon, authenticated, service_role;
 grant all on table public.shockwave_logs to anon, authenticated, service_role;
 grant all on table public.pt_room_logs to anon, authenticated, service_role;
+grant all on table public.changing_room_logs to anon, authenticated, service_role;
 `;

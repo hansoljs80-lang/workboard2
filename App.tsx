@@ -8,7 +8,8 @@ import DraftManager from './components/DraftManager';
 import BedManager from './components/BedManager';
 import LaundryManager from './components/LaundryManager'; 
 import ShockwaveManager from './components/ShockwaveManager'; 
-import PtRoomManager from './components/PtRoomManager'; // New Import
+import PtRoomManager from './components/PtRoomManager'; 
+import ChangingRoomManager from './components/ChangingRoomManager'; // New Import
 import Layout from './components/Layout';
 import { useAppData } from './hooks/useAppData';
 import { Tab } from './types';
@@ -76,13 +77,17 @@ const App: React.FC = () => {
         return (
           <LaundryManager staff={staff} />
         );
-      case Tab.PT_ROOM: // New Case
+      case Tab.PT_ROOM:
         return (
           <PtRoomManager staff={staff} />
         );
       case Tab.SHOCKWAVE:
         return (
           <ShockwaveManager staff={staff} />
+        );
+      case Tab.CHANGING_ROOM: // New Case
+        return (
+          <ChangingRoomManager staff={staff} />
         );
       case Tab.STAFF:
         // Pass tasks and templates to enable Safe Delete logic

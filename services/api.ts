@@ -1,5 +1,4 @@
 
-
 // This file aggregates all services for backward compatibility
 // and cleaner imports in components.
 
@@ -10,4 +9,5 @@ export * from './templateService';
 export * from './settingsService';
 export * from './laundryService';
 export * from './shockwaveService';
-export * from './ptRoomService'; // New Export
+export * from './ptRoomService'; 
+export * from './changingRoomService'; // New Export
