@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Staff, ShockwaveShift, ShockwaveLog, ShockwaveChecklistItem, ShockwaveConfig } from '../types';
 import { Activity, Sun, Moon, LayoutGrid, History, Save, AlertCircle, Copy, Filter, Settings, Clock, CheckSquare, Square } from 'lucide-react';
@@ -288,7 +289,7 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
   ];
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 p-4 md:p-6 pb-24 overflow-hidden">
+    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 p-4 md:p-6 pb-6 overflow-hidden">
       <StatusOverlay status={opStatus} message={opMessage} />
 
       {/* Header */}

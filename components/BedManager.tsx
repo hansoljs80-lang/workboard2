@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Staff, Task } from '../types';
 import BedCard from './BedCard';
@@ -53,7 +54,7 @@ const BedManager: React.FC<BedManagerProps> = ({ staff, tasks, settings, onRefre
   }, [changeModalBedId, beds]);
 
   return (
-    <div className="p-4 md:p-6 w-full h-full overflow-y-auto pb-24 relative bg-slate-50 dark:bg-slate-950 flex flex-col">
+    <div className="p-4 md:p-6 w-full h-full overflow-y-auto pb-6 relative bg-slate-50 dark:bg-slate-950 flex flex-col">
       <StatusOverlay status={opStatus} message={opMessage} />
 
       {/* Header Section */}
@@ -74,18 +75,30 @@ const BedManager: React.FC<BedManagerProps> = ({ staff, tasks, settings, onRefre
           </div>
         </div>
 
-        <div className="flex items-center gap-3 self-end md:self-auto">
+        <div className="flex items-center gap-2 self-end md:self-auto">
+          {/* Settings Button (Moved here) */}
+          {activeTab === 'status' && (
+             <button 
+                onClick={() => setIsConfigOpen(true)}
+                className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-600 rounded-xl font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm h-[42px]"
+                title="설정"
+             >
+               <Settings size={18} />
+               <span className="hidden md:inline text-sm">설정</span>
+             </button>
+          )}
+
           {/* Main Tab Switcher */}
-          <div className="bg-white dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 flex">
+          <div className="bg-white dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 flex h-[42px]">
              <button
                onClick={() => setActiveTab('status')}
-               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'status' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+               className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'status' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
              >
                <LayoutGrid size={16} /> 현황
              </button>
              <button
                onClick={() => setActiveTab('history')}
-               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'history' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+               className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'history' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
              >
                <History size={16} /> 이력
              </button>
@@ -96,17 +109,6 @@ const BedManager: React.FC<BedManagerProps> = ({ staff, tasks, settings, onRefre
       {/* STATUS VIEW */}
       {activeTab === 'status' && (
         <>
-          {/* Action Toolbar */}
-          <div className="flex justify-end gap-2 mb-4 shrink-0">
-             <button 
-                onClick={() => setIsConfigOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-600 rounded-xl font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm"
-             >
-               <Settings size={18} />
-               <span className="hidden md:inline">설정</span>
-             </button>
-          </div>
-
           {/* Bed Grid Layout */}
           <div 
             className="grid gap-4 flex-1 overflow-y-auto pb-4"
