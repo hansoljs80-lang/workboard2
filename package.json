@@ -4,7 +4,7 @@
   "description": "Physical Therapy Office Task Management System",
   "scripts": {
     "start": "parcel index.html",
-    "build": "parcel build index.html"
+    "build": "parcel build index.html --no-cache"
   },
   "dependencies": {
     "react": "18.3.1",
