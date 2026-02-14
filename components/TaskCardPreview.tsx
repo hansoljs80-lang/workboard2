@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Task, Staff, TaskStatus } from '../types';
@@ -77,20 +78,13 @@ const TaskCardPreview: React.FC<TaskCardPreviewProps> = ({
       await updateTask(task.id, { description: newDesc });
 
       // [NEW] Bed Sync Integration
-      // If this is a check action (selectedStaffIds exists), try to sync with Bed Manager
       if (selectedStaffIds && selectedStaffIds.length > 0) {
         const lines = localDesc.split('\n');
         const targetLine = lines[idx] || '';
-        // Extract plain text content: Remove "- [ ] " and any trailing info
         const content = targetLine.replace(/- \[[ x]\] /, '').trim();
         
-        // Attempt to sync (Fire and forget, don't block UI)
-        // Only trigger if it looks like a bed task (contains "베드" or "bed")
         if (content.includes('베드') || content.toLowerCase().includes('bed')) {
              updateBedDateByName(content, selectedStaffIds).then(() => {
-                // If onRefresh is provided, it might be good to call it, 
-                // but doing so might re-render this component and close the modal/preview.
-                // Since Bed Manager is a separate tab, we don't strictly need to refresh 'tasks' here immediately.
              });
         }
       }
@@ -139,7 +133,6 @@ const TaskCardPreview: React.FC<TaskCardPreviewProps> = ({
                
                if (isUnchecked || isChecked) {
                   const content = trimmed.substring(5).trim();
-                  // Regex to separate the task text from the completion signature
                   const completionMatch = content.match(/\s*\(수행: ([^)]+)\)$/);
                   const taskText = completionMatch ? content.replace(completionMatch[0], '') : content;
                   const completedBy = completionMatch ? completionMatch[1] : null;
@@ -165,7 +158,6 @@ const TaskCardPreview: React.FC<TaskCardPreviewProps> = ({
                          <span className={`text-sm leading-snug ${isChecked ? 'line-through text-slate-500' : 'font-bold text-slate-800 dark:text-slate-100'}`}>
                            {taskText}
                          </span>
-                         {/* Parse and show who completed it if checked */}
                          {isChecked && completedBy && (
                            <span className="text-[11px] text-blue-600 dark:text-blue-400 font-bold mt-1 bg-blue-50 dark:bg-blue-900/30 px-1.5 py-0.5 rounded-md inline-block w-fit">
                               수행: {completedBy}
@@ -209,6 +201,17 @@ const TaskCardPreview: React.FC<TaskCardPreviewProps> = ({
     ? completedIds.map(id => staff.find(s => s.id === id)).filter(Boolean)
     : [];
 
+  // Position Calculation
+  const viewportHeight = window.innerHeight;
+  const spaceBelow = viewportHeight - rect.bottom;
+  const showAbove = spaceBelow < 300; // If less than 300px below, flip up
+  
+  const topPos = showAbove 
+    ? rect.top + window.scrollY - 8 
+    : rect.bottom + window.scrollY + 4;
+    
+  const transformClass = showAbove ? '-translate-y-full origin-bottom' : 'origin-top';
+
   return createPortal(
     <>
       <div
@@ -217,12 +220,12 @@ const TaskCardPreview: React.FC<TaskCardPreviewProps> = ({
         onClick={(e) => e.stopPropagation()}
         style={{
           position: 'absolute',
-          top: rect.bottom + window.scrollY + 4,
+          top: topPos,
           left: rect.left + window.scrollX,
           width: rect.width,
           zIndex: 9999,
         }}
-        className="animate-fade-in-up origin-top"
+        className={`animate-fade-in-up ${transformClass}`}
       >
         <div className={`
           bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700

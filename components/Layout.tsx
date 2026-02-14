@@ -25,7 +25,7 @@ const Layout: React.FC<LayoutProps> = ({
   const { appTitle, isSidebarOpen, toggleSidebar } = useUI();
 
   return (
-    // Use inline style for dvh to ensure compatibility even if Tailwind config fails or JIT misses it
+    // Use inline style for dvh to ensure compatibility
     <div 
       className="flex flex-row bg-slate-100 dark:bg-slate-950 transition-colors duration-300 overflow-hidden"
       style={{ height: '100dvh', minHeight: '100vh' }}
@@ -43,8 +43,8 @@ const Layout: React.FC<LayoutProps> = ({
       />
 
       {/* Main Content Area */}
-      {/* Mobile: Added pb-[70px] to prevent content from being hidden behind the bottom fixed sidebar */}
-      <main className="flex-1 overflow-hidden relative flex flex-col w-full bg-slate-100 dark:bg-slate-950 transition-all duration-300 pb-[70px] md:pb-0">
+      {/* Mobile: Increased padding-bottom to 80px (pb-20) to ensure content clears the bottom nav safely */}
+      <main className="flex-1 overflow-hidden relative flex flex-col w-full bg-slate-100 dark:bg-slate-950 transition-all duration-300 pb-20 md:pb-0">
         
         {/* Floating Open Button (Visible only when sidebar is closed on Desktop) */}
         {!isSidebarOpen && (

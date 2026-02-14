@@ -82,13 +82,11 @@ const BoardColumn: React.FC<BoardColumnProps> = ({
       border-x border-b border-slate-200 dark:border-slate-800
       shadow-lg shadow-slate-200/50 dark:shadow-none
       transition-all
-      h-[600px] md:h-full
+      h-auto min-h-[300px] md:h-full
     `}>
       {/* 
-         Mobile Height Logic: h-[600px] 
-         On mobile, the KanbanView stacks vertically. 
-         We give each column a fixed, substantial height so the internal scroll works comfortably 
-         and content isn't squashed. The parent page scrolls to show these stacked columns.
+         Mobile: h-auto to allow growing with content (page scroll)
+         Desktop: h-full to fit container (internal scroll)
       */}
 
       {/* Header */}
@@ -108,7 +106,8 @@ const BoardColumn: React.FC<BoardColumnProps> = ({
       </div>
       
       {/* Task List Area */}
-      <div className="p-3 overflow-y-auto flex-1 custom-scrollbar relative bg-slate-50/50 dark:bg-black/20">
+      {/* Mobile: No overflow-y-auto to prevent scroll trapping. Desktop: overflow-y-auto */}
+      <div className="p-3 flex-1 relative bg-slate-50/50 dark:bg-black/20 md:overflow-y-auto custom-scrollbar">
         {tasks.length > 0 ? (
           <div className="space-y-2 pb-10">
             {taskList}
