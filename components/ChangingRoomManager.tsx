@@ -15,9 +15,11 @@ interface ChangingRoomManagerProps {
 }
 
 type TabMode = 'status' | 'history';
+type SubTab = 'MORNING' | 'LUNCH' | 'ADHOC';
 
 const ChangingRoomManager: React.FC<ChangingRoomManagerProps> = ({ staff }) => {
   const [activeTab, setActiveTab] = useState<TabMode>('status');
+  const [mobileSubTab, setMobileSubTab] = useState<SubTab>('MORNING');
   const [opStatus, setOpStatus] = useState<OperationStatus>('idle');
   const [opMessage, setOpMessage] = useState('');
 
@@ -160,6 +162,52 @@ const ChangingRoomManager: React.FC<ChangingRoomManagerProps> = ({ staff }) => {
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   };
 
+  // Card Components defined for cleaner render
+  const morningCard = (
+    <ChecklistCard
+      shift="MORNING"
+      title="아침 점검"
+      icon={<Sun className="text-amber-500" />}
+      items={config.morningItems}
+      checkedState={morningChecks}
+      onToggleCheck={(id) => toggleCheck('MORNING', id)}
+      onSave={() => handleSaveClick('MORNING')}
+      theme="border-amber-200 dark:border-amber-800"
+      todayLogs={getLogsForShift('MORNING')}
+      staff={staff}
+    />
+  );
+
+  const lunchCard = (
+    <ChecklistCard
+      shift="LUNCH"
+      title="점심 점검"
+      icon={<Coffee className="text-orange-500" />}
+      items={config.lunchItems}
+      checkedState={lunchChecks}
+      onToggleCheck={(id) => toggleCheck('LUNCH', id)}
+      onSave={() => handleSaveClick('LUNCH')}
+      theme="border-orange-200 dark:border-orange-800"
+      todayLogs={getLogsForShift('LUNCH')}
+      staff={staff}
+    />
+  );
+
+  const adhocCard = (
+    <ChecklistCard
+      shift="ADHOC"
+      title="수시 점검"
+      icon={<Eye className="text-teal-500" />}
+      items={config.adhocItems}
+      checkedState={adhocChecks}
+      onToggleCheck={(id) => toggleCheck('ADHOC', id)}
+      onSave={() => handleSaveClick('ADHOC')}
+      theme="border-teal-200 dark:border-teal-800"
+      todayLogs={getLogsForShift('ADHOC')}
+      staff={staff}
+    />
+  );
+
   return (
     <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 p-4 md:p-6 pb-24 overflow-hidden">
       <StatusOverlay status={opStatus} message={opMessage} />
@@ -206,9 +254,9 @@ const ChangingRoomManager: React.FC<ChangingRoomManagerProps> = ({ staff }) => {
       </div>
 
       {activeTab === 'status' ? (
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden flex flex-col">
            {error === 'DATA_TABLE_MISSING' && (
-              <div className="mb-4 bg-amber-50 text-amber-800 p-3 rounded-xl border border-amber-200 flex flex-col md:flex-row items-center justify-center gap-3">
+              <div className="mb-4 bg-amber-50 text-amber-800 p-3 rounded-xl border border-amber-200 flex flex-col md:flex-row items-center justify-center gap-3 shrink-0">
                  <span className="font-bold text-sm flex items-center gap-2">
                     <AlertCircle size={16} /> DB 테이블(changing_room_logs)이 필요합니다.
                  </span>
@@ -218,43 +266,31 @@ const ChangingRoomManager: React.FC<ChangingRoomManagerProps> = ({ staff }) => {
               </div>
            )}
            
-           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full overflow-y-auto pb-4 custom-scrollbar">
-              <ChecklistCard
-                shift="MORNING"
-                title="아침 점검"
-                icon={<Sun className="text-amber-500" />}
-                items={config.morningItems}
-                checkedState={morningChecks}
-                onToggleCheck={(id) => toggleCheck('MORNING', id)}
-                onSave={() => handleSaveClick('MORNING')}
-                theme="border-amber-200 dark:border-amber-800"
-                todayLogs={getLogsForShift('MORNING')}
-                staff={staff}
-              />
-              <ChecklistCard
-                shift="LUNCH"
-                title="점심 점검"
-                icon={<Coffee className="text-orange-500" />}
-                items={config.lunchItems}
-                checkedState={lunchChecks}
-                onToggleCheck={(id) => toggleCheck('LUNCH', id)}
-                onSave={() => handleSaveClick('LUNCH')}
-                theme="border-orange-200 dark:border-orange-800"
-                todayLogs={getLogsForShift('LUNCH')}
-                staff={staff}
-              />
-              <ChecklistCard
-                shift="ADHOC"
-                title="수시 점검"
-                icon={<Eye className="text-teal-500" />}
-                items={config.adhocItems}
-                checkedState={adhocChecks}
-                onToggleCheck={(id) => toggleCheck('ADHOC', id)}
-                onSave={() => handleSaveClick('ADHOC')}
-                theme="border-teal-200 dark:border-teal-800"
-                todayLogs={getLogsForShift('ADHOC')}
-                staff={staff}
-              />
+           {/* Mobile Tab Navigation */}
+           <div className="md:hidden flex bg-white dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 mb-4 shrink-0 overflow-x-auto custom-scrollbar">
+              <button onClick={() => setMobileSubTab('MORNING')} className={`flex-1 flex items-center justify-center gap-2 py-2 px-1 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${mobileSubTab === 'MORNING' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : 'text-slate-400'}`}>
+                 <Sun size={16} /> 아침 점검
+              </button>
+              <button onClick={() => setMobileSubTab('LUNCH')} className={`flex-1 flex items-center justify-center gap-2 py-2 px-1 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${mobileSubTab === 'LUNCH' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' : 'text-slate-400'}`}>
+                 <Coffee size={16} /> 점심 점검
+              </button>
+              <button onClick={() => setMobileSubTab('ADHOC')} className={`flex-1 flex items-center justify-center gap-2 py-2 px-1 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${mobileSubTab === 'ADHOC' ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400' : 'text-slate-400'}`}>
+                 <Eye size={16} /> 수시 점검
+              </button>
+           </div>
+
+           {/* Mobile View (Single Card) */}
+           <div className="md:hidden flex-1 overflow-y-auto pb-4 custom-scrollbar">
+              {mobileSubTab === 'MORNING' && morningCard}
+              {mobileSubTab === 'LUNCH' && lunchCard}
+              {mobileSubTab === 'ADHOC' && adhocCard}
+           </div>
+
+           {/* Desktop View (Grid) */}
+           <div className="hidden md:grid md:grid-cols-3 gap-4 h-full overflow-y-auto pb-4 custom-scrollbar">
+              {morningCard}
+              {lunchCard}
+              {adhocCard}
            </div>
         </div>
       ) : (
