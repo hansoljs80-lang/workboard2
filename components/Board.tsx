@@ -112,7 +112,7 @@ const Board: React.FC<BoardProps> = ({ tasks, staff, templates = [], onRefresh }
   }, [currentDate, onRefresh]);
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-slate-100 dark:bg-slate-950 relative">
+    <div className="h-full flex flex-col bg-slate-100 dark:bg-slate-950 relative">
       <StatusOverlay status={operationStatus} message={operationMessage} />
 
       <BoardHeader 
@@ -123,7 +123,11 @@ const Board: React.FC<BoardProps> = ({ tasks, staff, templates = [], onRefresh }
         onDateSelect={handleDateSelect}
       />
 
-      <div className="flex-1 overflow-hidden p-4 md:p-6 pb-24 md:pb-6">
+      {/* 
+         Mobile: overflow-y-auto allowed on main area so vertical stacked columns can scroll.
+         Desktop: overflow-hidden kept to ensure columns handle their own internal scrolling.
+      */}
+      <div className="flex-1 overflow-y-auto md:overflow-hidden p-4 md:p-6 pb-4">
         {viewMode === 'day' ? (
           <KanbanView 
             todoTasks={todoTasks}

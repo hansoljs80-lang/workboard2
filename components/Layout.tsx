@@ -30,7 +30,7 @@ const Layout: React.FC<LayoutProps> = ({
       className="flex flex-row bg-slate-100 dark:bg-slate-950 transition-colors duration-300 overflow-hidden"
       style={{ height: '100dvh', minHeight: '100vh' }}
     >
-      {/* Sidebar - Now handles the header controls inside it */}
+      {/* Sidebar */}
       <Sidebar 
         activeTab={activeTab} 
         onTabChange={onTabChange} 
@@ -43,7 +43,8 @@ const Layout: React.FC<LayoutProps> = ({
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 overflow-hidden relative flex flex-col w-full bg-slate-100 dark:bg-slate-950 transition-all duration-300">
+      {/* Mobile: Added pb-[70px] to prevent content from being hidden behind the bottom fixed sidebar */}
+      <main className="flex-1 overflow-hidden relative flex flex-col w-full bg-slate-100 dark:bg-slate-950 transition-all duration-300 pb-[70px] md:pb-0">
         
         {/* Floating Open Button (Visible only when sidebar is closed on Desktop) */}
         {!isSidebarOpen && (
@@ -63,7 +64,7 @@ const Layout: React.FC<LayoutProps> = ({
           </div>
         )}
         
-        <div className="h-full overflow-hidden">
+        <div className="h-full overflow-hidden flex flex-col">
           {children}
         </div>
       </main>

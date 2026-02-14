@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { LayoutDashboard, Users, Database, ClipboardList, Moon, Sun, Settings as SettingsIcon, Menu, RefreshCw, PanelLeftClose, BedDouble, Shirt, Activity, Stethoscope, DoorOpen } from 'lucide-react';
 import { Tab } from '../types';
@@ -31,12 +32,12 @@ const Sidebar: React.FC<SidebarProps> = ({
       h-16 md:h-full 
       fixed bottom-0 left-0 right-0 
       md:static 
-      bg-slate-50 dark:bg-slate-900 
+      bg-white/95 dark:bg-slate-900/95 backdrop-blur-md md:bg-slate-50 md:dark:bg-slate-900
       border-t md:border-t-0 
       flex md:flex-col items-center md:items-stretch 
       justify-between md:justify-start 
-      z-30 
-      shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] md:shadow-none
+      z-50
+      shadow-[0_-4px_10px_-1px_rgba(0,0,0,0.1)] md:shadow-none
       transition-all duration-300 ease-in-out
       overflow-hidden md:overflow-x-hidden md:overflow-y-auto custom-scrollbar
       ${isOpen ? 'md:w-64 md:border-r border-slate-300 dark:border-slate-800' : 'md:w-0 md:p-0 md:overflow-hidden md:border-none opacity-100 md:opacity-0 pointer-events-auto md:pointer-events-none'}
@@ -73,7 +74,7 @@ const Sidebar: React.FC<SidebarProps> = ({
          <div className="h-px bg-slate-200 dark:bg-slate-800 w-full"></div>
       </div>
 
-      <div className="flex-1 flex md:flex-col items-center md:items-stretch justify-between md:justify-start w-full md:px-4 md:gap-1">
+      <div className="flex-1 flex md:flex-col items-center md:items-stretch justify-between md:justify-start w-full px-2 md:px-4 md:gap-1 overflow-x-auto md:overflow-visible">
         <NavButton 
           active={activeTab === Tab.BOARD} 
           onClick={() => onTabChange(Tab.BOARD)} 
@@ -112,7 +113,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           active={activeTab === Tab.PT_ROOM} 
           onClick={() => onTabChange(Tab.PT_ROOM)} 
           icon={<Stethoscope size={24} />} 
-          label="물리치료"
+          label="치료실"
           fullLabel="물리치료실 관리" 
         />
 
@@ -152,7 +153,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         {/* Theme Toggle Button */}
         <button 
           onClick={toggleTheme}
-          className="flex md:flex-row flex-col items-center md:justify-start justify-center flex-1 md:flex-none w-auto md:w-full md:px-4 md:py-3 md:mb-1 rounded-xl transition-all duration-200 text-slate-500 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-white dark:hover:bg-slate-800 gap-1 md:gap-3 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 hover:shadow-sm overflow-hidden min-w-0"
+          className="flex md:flex-row flex-col items-center md:justify-start justify-center flex-1 md:flex-none w-auto md:w-full min-w-[60px] md:px-4 md:py-3 md:mb-1 rounded-xl transition-all duration-200 text-slate-500 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-white dark:hover:bg-slate-800 gap-1 md:gap-3 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 hover:shadow-sm overflow-hidden shrink-0"
         >
           <span className="shrink-0">{theme === 'dark' ? <Sun size={24} /> : <Moon size={24} />}</span>
           <span className="text-[10px] md:text-sm font-medium md:font-semibold whitespace-nowrap">
@@ -184,9 +185,9 @@ const Sidebar: React.FC<SidebarProps> = ({
 const NavButton: React.FC<{ active: boolean; onClick: () => void; icon: React.ReactNode; label: string; fullLabel?: string }> = ({ active, onClick, icon, label, fullLabel }) => (
   <button 
     onClick={onClick}
-    className={`flex md:flex-row flex-col items-center md:justify-start justify-center flex-1 md:flex-none w-auto md:w-full md:px-4 md:py-3 md:mb-1 rounded-xl transition-all duration-200 gap-1 md:gap-3 border overflow-hidden min-w-0 ${
+    className={`flex md:flex-row flex-col items-center md:justify-start justify-center flex-1 md:flex-none w-auto md:w-full min-w-[60px] md:px-4 md:py-3 md:mb-1 rounded-xl transition-all duration-200 gap-1 md:gap-3 border overflow-hidden shrink-0 ${
       active 
-        ? 'bg-white dark:bg-blue-900/20 border-slate-300 dark:border-blue-800/50 shadow-sm text-blue-700 dark:text-blue-300' 
+        ? 'bg-blue-50/50 md:bg-white dark:md:bg-blue-900/20 border-slate-200 md:border-slate-300 dark:border-blue-800/50 md:shadow-sm text-blue-700 dark:text-blue-400' 
         : 'border-transparent hover:bg-white dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-500 dark:text-slate-500 hover:shadow-sm'
     }`}
   >

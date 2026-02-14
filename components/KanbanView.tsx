@@ -2,7 +2,7 @@
 import React from 'react';
 import { Task, Staff, TaskStatus } from '../types';
 import BoardColumn from './BoardColumn';
-import { Clock, Check, Plus, ChevronsRight, Loader } from 'lucide-react';
+import { Clock, Check, Plus, ChevronsRight, Loader, ChevronsDown } from 'lucide-react';
 
 interface KanbanViewProps {
   todoTasks: Task[];
@@ -30,7 +30,7 @@ const KanbanView: React.FC<KanbanViewProps> = ({
   onRefresh
 }) => {
   return (
-    <div className="flex flex-col md:flex-row gap-2 h-full overflow-x-auto pb-2 items-stretch">
+    <div className="flex flex-col md:flex-row gap-4 h-auto md:h-full items-stretch">
       {/* Column: To Do */}
       <BoardColumn 
         title="할 일" 
@@ -55,13 +55,10 @@ const KanbanView: React.FC<KanbanViewProps> = ({
         }
       />
 
-      {/* Arrow 1: To Do -> In Progress */}
-      <div className="hidden md:flex items-center justify-center px-1">
-        <ChevronsRight 
-          size={36} 
-          strokeWidth={3} 
-          className="text-slate-400 dark:text-slate-600 drop-shadow-sm" 
-        />
+      {/* Arrow 1: To Do -> In Progress (Desktop Right, Mobile Down) */}
+      <div className="flex items-center justify-center px-1 shrink-0 text-slate-400 dark:text-slate-600 opacity-50">
+        <ChevronsRight size={32} className="hidden md:block" />
+        <ChevronsDown size={24} className="md:hidden" />
       </div>
 
       {/* Column: In Progress */}
@@ -80,13 +77,10 @@ const KanbanView: React.FC<KanbanViewProps> = ({
         onRefresh={onRefresh} 
       />
 
-      {/* Arrow 2: In Progress -> Done */}
-      <div className="hidden md:flex items-center justify-center px-1">
-        <ChevronsRight 
-          size={36} 
-          strokeWidth={3} 
-          className="text-slate-400 dark:text-slate-600 drop-shadow-sm" 
-        />
+      {/* Arrow 2: In Progress -> Done (Desktop Right, Mobile Down) */}
+      <div className="flex items-center justify-center px-1 shrink-0 text-slate-400 dark:text-slate-600 opacity-50">
+        <ChevronsRight size={32} className="hidden md:block" />
+        <ChevronsDown size={24} className="md:hidden" />
       </div>
 
       {/* Column: Done */}

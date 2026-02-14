@@ -4,7 +4,6 @@
     "manifest.json": ["@parcel/transformer-webmanifest"]
   },
   "packagers": {
-    "manifest.json": "@parcel/packager-raw",
-    "*.webmanifest": "@parcel/packager-raw"
+    "manifest.json": "@parcel/packager-raw"
   }
 }
