@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { BarChart3, Trophy, Sun, Moon } from 'lucide-react';
+import { BarChart3, Trophy, Sun, Moon, Clock } from 'lucide-react';
 
 interface StatsItem {
   id: string;
@@ -13,6 +14,7 @@ interface ShockwaveStatsProps {
   stats: StatsItem[];
   shiftLeaders: {
     MORNING: { name: string; count: number } | null;
+    DAILY: { name: string; count: number } | null;
     EVENING: { name: string; count: number } | null;
   };
   loading: boolean;
@@ -36,28 +38,41 @@ const ShockwaveStats: React.FC<ShockwaveStatsProps> = ({ stats, shiftLeaders, lo
         ) : (
            <div className="space-y-6">
               {/* Shift Best Section */}
-              <div className="grid grid-cols-2 gap-3 mb-2">
-                 <div className="bg-amber-50 dark:bg-amber-900/10 p-3 rounded-lg border border-amber-100 dark:border-amber-800 flex flex-col items-center text-center">
-                    <div className="p-1.5 bg-white dark:bg-slate-800 rounded-full mb-1 shadow-sm text-amber-500">
-                      <Sun size={16} />
+              <div className="grid grid-cols-3 gap-2 mb-2">
+                 <div className="bg-amber-50 dark:bg-amber-900/10 p-2 rounded-lg border border-amber-100 dark:border-amber-800 flex flex-col items-center text-center">
+                    <div className="p-1 bg-white dark:bg-slate-800 rounded-full mb-1 shadow-sm text-amber-500">
+                      <Sun size={14} />
                     </div>
-                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold mb-1">아침 관리왕</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold mb-1">아침</span>
                     {shiftLeaders.MORNING ? (
                       <>
-                        <span className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate w-full">{shiftLeaders.MORNING.name}</span>
+                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate w-full">{shiftLeaders.MORNING.name}</span>
                         <span className="text-[10px] text-amber-600 font-bold">{shiftLeaders.MORNING.count}회</span>
                       </>
                     ) : <span className="text-[10px] text-slate-400">-</span>}
                  </div>
 
-                 <div className="bg-indigo-50 dark:bg-indigo-900/10 p-3 rounded-lg border border-indigo-100 dark:border-indigo-800 flex flex-col items-center text-center">
-                    <div className="p-1.5 bg-white dark:bg-slate-800 rounded-full mb-1 shadow-sm text-indigo-500">
-                      <Moon size={16} />
+                 <div className="bg-blue-50 dark:bg-blue-900/10 p-2 rounded-lg border border-blue-100 dark:border-blue-800 flex flex-col items-center text-center">
+                    <div className="p-1 bg-white dark:bg-slate-800 rounded-full mb-1 shadow-sm text-blue-500">
+                      <Clock size={14} />
                     </div>
-                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold mb-1">저녁 관리왕</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold mb-1">일상</span>
+                    {shiftLeaders.DAILY ? (
+                      <>
+                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate w-full">{shiftLeaders.DAILY.name}</span>
+                        <span className="text-[10px] text-blue-600 font-bold">{shiftLeaders.DAILY.count}회</span>
+                      </>
+                    ) : <span className="text-[10px] text-slate-400">-</span>}
+                 </div>
+
+                 <div className="bg-indigo-50 dark:bg-indigo-900/10 p-2 rounded-lg border border-indigo-100 dark:border-indigo-800 flex flex-col items-center text-center">
+                    <div className="p-1 bg-white dark:bg-slate-800 rounded-full mb-1 shadow-sm text-indigo-500">
+                      <Moon size={14} />
+                    </div>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold mb-1">저녁</span>
                     {shiftLeaders.EVENING ? (
                       <>
-                        <span className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate w-full">{shiftLeaders.EVENING.name}</span>
+                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate w-full">{shiftLeaders.EVENING.name}</span>
                         <span className="text-[10px] text-indigo-600 font-bold">{shiftLeaders.EVENING.count}회</span>
                       </>
                     ) : <span className="text-[10px] text-slate-400">-</span>}

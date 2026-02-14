@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { ShockwaveConfig } from '../../types';
-import { X, Save, Sun, Moon } from 'lucide-react';
+import { X, Save, Sun, Moon, Clock } from 'lucide-react';
 import ConfigListEditor from '../common/ConfigListEditor';
 
 interface ShockwaveConfigModalProps {
@@ -11,10 +12,18 @@ interface ShockwaveConfigModalProps {
 
 const ShockwaveConfigModal: React.FC<ShockwaveConfigModalProps> = ({ config, onSave, onClose }) => {
   const [localConfig, setLocalConfig] = useState<ShockwaveConfig>(config);
-  const [activeTab, setActiveTab] = useState<'morning' | 'evening'>('morning');
+  const [activeTab, setActiveTab] = useState<'morning' | 'daily' | 'evening'>('morning');
 
-  const listKey = activeTab === 'morning' ? 'morningItems' : 'eveningItems';
-  const currentList = localConfig[listKey];
+  const getListKey = () => {
+    switch (activeTab) {
+      case 'morning': return 'morningItems';
+      case 'daily': return 'dailyItems';
+      case 'evening': return 'eveningItems';
+    }
+  };
+
+  const currentListKey = getListKey();
+  const currentList = localConfig[currentListKey] || [];
 
   // -- CRUD Handlers --
 
@@ -25,14 +34,14 @@ const ShockwaveConfigModal: React.FC<ShockwaveConfigModalProps> = ({ config, onS
     };
     setLocalConfig(prev => ({
       ...prev,
-      [listKey]: [...prev[listKey], newItem]
+      [currentListKey]: [...(prev[currentListKey] || []), newItem]
     }));
   };
 
   const handleUpdateItem = (id: string, newLabel: string) => {
     setLocalConfig(prev => ({
       ...prev,
-      [listKey]: prev[listKey].map(item => 
+      [currentListKey]: (prev[currentListKey] || []).map(item => 
         item.id === id ? { ...item, label: newLabel } : item
       )
     }));
@@ -41,7 +50,7 @@ const ShockwaveConfigModal: React.FC<ShockwaveConfigModalProps> = ({ config, onS
   const handleDeleteItem = (id: string) => {
     setLocalConfig(prev => ({
       ...prev,
-      [listKey]: prev[listKey].filter(item => item.id !== id)
+      [currentListKey]: (prev[currentListKey] || []).filter(item => item.id !== id)
     }));
   };
 
@@ -57,7 +66,7 @@ const ShockwaveConfigModal: React.FC<ShockwaveConfigModalProps> = ({ config, onS
 
     setLocalConfig(prev => ({
       ...prev,
-      [listKey]: newList
+      [currentListKey]: newList
     }));
   };
 
@@ -72,26 +81,36 @@ const ShockwaveConfigModal: React.FC<ShockwaveConfigModalProps> = ({ config, onS
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex p-2 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 shrink-0">
+        <div className="flex p-2 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 shrink-0 overflow-x-auto custom-scrollbar">
            <button
              onClick={() => setActiveTab('morning')}
-             className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-bold transition-all ${
+             className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${
                activeTab === 'morning' 
                  ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' 
                  : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
              }`}
            >
-             <Sun size={16} /> 아침 업무
+             <Sun size={16} /> 아침
+           </button>
+           <button
+             onClick={() => setActiveTab('daily')}
+             className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${
+               activeTab === 'daily' 
+                 ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' 
+                 : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+             }`}
+           >
+             <Clock size={16} /> 일상
            </button>
            <button
              onClick={() => setActiveTab('evening')}
-             className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-bold transition-all ${
+             className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${
                activeTab === 'evening' 
                  ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400' 
                  : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
              }`}
            >
-             <Moon size={16} /> 저녁 업무
+             <Moon size={16} /> 저녁
            </button>
         </div>
         
@@ -103,7 +122,7 @@ const ShockwaveConfigModal: React.FC<ShockwaveConfigModalProps> = ({ config, onS
             onUpdate={handleUpdateItem}
             onDelete={handleDeleteItem}
             onMove={handleMoveItem}
-            placeholder={`${activeTab === 'morning' ? '아침' : '저녁'} 업무 추가...`}
+            placeholder={`${activeTab === 'morning' ? '아침' : activeTab === 'daily' ? '일상' : '저녁'} 업무 추가...`}
           />
         </div>
 

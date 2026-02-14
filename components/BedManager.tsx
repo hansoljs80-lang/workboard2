@@ -5,7 +5,7 @@ import BedConfigModal from './BedConfigModal';
 import BedChangeModal from './BedChangeModal';
 import BedHistory from './BedHistory';
 import StatusOverlay from './StatusOverlay';
-import { BedDouble, Settings, PlayCircle, Info, LayoutGrid, History } from 'lucide-react';
+import { BedDouble, Settings, LayoutGrid, History } from 'lucide-react';
 import { useBedData } from '../hooks/useBedData';
 import { getNextRoutineDate } from '../utils/bedUtils';
 
@@ -32,7 +32,6 @@ const BedManager: React.FC<BedManagerProps> = ({ staff, tasks, settings, onRefre
     opMessage, 
     handleBedChange, 
     updateBedName,
-    handleGenerateRoutine, 
     updateConfig 
   } = useBedData(settings, tasks, onRefresh);
 
@@ -106,25 +105,6 @@ const BedManager: React.FC<BedManagerProps> = ({ staff, tasks, settings, onRefre
                <Settings size={18} />
                <span className="hidden md:inline">설정</span>
              </button>
-             <button 
-                onClick={() => handleGenerateRoutine(onNavigateToBoard)}
-                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold shadow-md hover:bg-emerald-700 transition-all active:scale-95"
-             >
-               <PlayCircle size={18} />
-               정기 교체 업무 생성
-             </button>
-          </div>
-
-          {/* Usage Tip Banner */}
-          <div className="mb-6 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800 flex items-start gap-3 shrink-0">
-             <Info className="text-blue-500 shrink-0 mt-0.5" size={18} />
-             <div className="text-sm text-blue-800 dark:text-blue-200">
-                <p className="font-bold mb-1">💡 사용 팁</p>
-                <p>
-                  오염 등으로 인해 예정보다 일찍 배드를 교체했다면 해당 배드 카드의 <strong>'지금 교체'</strong> 버튼을 눌러주세요.<br/>
-                  그러면 다음번 <strong>정기 교체 업무 생성</strong> 시 해당 배드는 <strong>'최근 교체됨'</strong>으로 표시되어 중복 교체를 방지할 수 있습니다.
-                </p>
-             </div>
           </div>
 
           {/* Bed Grid Layout */}

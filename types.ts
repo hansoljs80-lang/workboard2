@@ -121,7 +121,7 @@ export interface LaundryLog {
 
 // --- Shockwave Types ---
 
-export type ShockwaveShift = 'MORNING' | 'EVENING';
+export type ShockwaveShift = 'MORNING' | 'DAILY' | 'EVENING';
 
 export interface ShockwaveChecklistItem {
   id: string;
@@ -139,6 +139,7 @@ export interface ShockwaveLog {
 
 export interface ShockwaveConfig {
   morningItems: { id: string; label: string }[];
+  dailyItems: { id: string; label: string }[];
   eveningItems: { id: string; label: string }[];
 }
 

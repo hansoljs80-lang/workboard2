@@ -1,3 +1,4 @@
+
 import { getSupabase } from './supabase';
 import { ShockwaveLog, ShockwaveShift, ShockwaveChecklistItem, ShockwaveConfig } from '../types';
 
@@ -11,6 +12,11 @@ const DEFAULT_CONFIG: ShockwaveConfig = {
     { id: 'pads', label: '충격파 패드 정리' },
     { id: 'device', label: '기기 닦기' },
     { id: 'room', label: '초음파실 정리' }
+  ],
+  dailyItems: [
+    { id: 'gel_check', label: '수시 겔 보충' },
+    { id: 'pad_check', label: '패드 상태 점검' },
+    { id: 'tidy_up', label: '사용 후 정리 정돈' }
   ],
   eveningItems: [
     { id: 'room', label: '초음파실 정리' },
@@ -35,7 +41,14 @@ export const getShockwaveConfig = async (): Promise<ShockwaveConfig> => {
       return DEFAULT_CONFIG;
     }
 
-    return JSON.parse(data.value) as ShockwaveConfig;
+    const parsed = JSON.parse(data.value) as ShockwaveConfig;
+    
+    // Migration: Ensure all keys exist
+    if (!parsed.morningItems) parsed.morningItems = DEFAULT_CONFIG.morningItems;
+    if (!parsed.dailyItems) parsed.dailyItems = DEFAULT_CONFIG.dailyItems;
+    if (!parsed.eveningItems) parsed.eveningItems = DEFAULT_CONFIG.eveningItems;
+
+    return parsed;
   } catch (e) {
     console.error("Failed to load shockwave config", e);
     return DEFAULT_CONFIG;

@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Staff, ShockwaveShift, ShockwaveLog, ShockwaveChecklistItem, ShockwaveConfig } from '../types';
-import { Activity, Sun, Moon, LayoutGrid, History, CheckSquare, Square, Save, AlertCircle, Copy, Filter, Settings } from 'lucide-react';
+import { Activity, Sun, Moon, LayoutGrid, History, CheckSquare, Square, Save, AlertCircle, Copy, Filter, Settings, Clock } from 'lucide-react';
 import StatusOverlay, { OperationStatus } from './StatusOverlay';
 import StaffSelectionModal from './common/StaffSelectionModal';
 import { fetchShockwaveLogs, logShockwaveAction, getShockwaveConfig, saveShockwaveConfig } from '../services/shockwaveService';
@@ -24,11 +25,12 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
   const [opMessage, setOpMessage] = useState('');
 
   // Config State
-  const [config, setConfig] = useState<ShockwaveConfig>({ morningItems: [], eveningItems: [] });
+  const [config, setConfig] = useState<ShockwaveConfig>({ morningItems: [], dailyItems: [], eveningItems: [] });
   const [isConfigOpen, setIsConfigOpen] = useState(false);
 
   // Checklist State
   const [morningChecks, setMorningChecks] = useState<string[]>([]);
+  const [dailyChecks, setDailyChecks] = useState<string[]>([]);
   const [eveningChecks, setEveningChecks] = useState<string[]>([]);
   const [confirmingShift, setConfirmingShift] = useState<ShockwaveShift | null>(null);
 
@@ -111,13 +113,15 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
   const toggleCheck = (shift: ShockwaveShift, id: string) => {
     if (shift === 'MORNING') {
       setMorningChecks(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+    } else if (shift === 'DAILY') {
+      setDailyChecks(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
     } else {
       setEveningChecks(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
     }
   };
 
   const handleSaveClick = (shift: ShockwaveShift) => {
-    const checks = shift === 'MORNING' ? morningChecks : eveningChecks;
+    const checks = shift === 'MORNING' ? morningChecks : shift === 'DAILY' ? dailyChecks : eveningChecks;
     if (checks.length === 0) {
       if(!window.confirm("체크된 항목이 없습니다. 그래도 저장하시겠습니까?")) return;
     }
@@ -130,8 +134,15 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
     setOpStatus('loading');
     setOpMessage('저장 중...');
 
-    const items = confirmingShift === 'MORNING' ? config.morningItems : config.eveningItems;
-    const checks = confirmingShift === 'MORNING' ? morningChecks : eveningChecks;
+    const items = 
+      confirmingShift === 'MORNING' ? config.morningItems : 
+      confirmingShift === 'DAILY' ? config.dailyItems : 
+      config.eveningItems;
+    
+    const checks = 
+      confirmingShift === 'MORNING' ? morningChecks : 
+      confirmingShift === 'DAILY' ? dailyChecks : 
+      eveningChecks;
     
     // Construct payload
     const checklistData: ShockwaveChecklistItem[] = items.map(item => ({
@@ -147,6 +158,7 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
       setOpMessage('저장 완료');
       // Reset checklist
       if (confirmingShift === 'MORNING') setMorningChecks([]);
+      else if (confirmingShift === 'DAILY') setDailyChecks([]);
       else setEveningChecks([]);
       
       loadLogs();
@@ -218,6 +230,7 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
     };
     return {
         MORNING: getLeader('MORNING'),
+        DAILY: getLeader('DAILY'),
         EVENING: getLeader('EVENING')
     };
   }, [logs, staff]);
@@ -259,21 +272,21 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
     return (
       <div className={`flex flex-col h-full rounded-2xl border-2 transition-all shadow-sm overflow-hidden ${theme}`}>
          {/* Header */}
-         <div className="p-4 flex items-center justify-between border-b border-black/5 dark:border-white/5">
+         <div className="p-4 flex items-center justify-between border-b border-black/5 dark:border-white/5 shrink-0">
             <div className="flex items-center gap-3">
                <div className="p-2 bg-white/50 rounded-lg shadow-sm">{icon}</div>
                <h3 className="text-lg font-bold">{title}</h3>
             </div>
             {lastLog && (
-                <div className="text-xs font-medium px-2 py-1 bg-white/50 rounded-md flex items-center gap-1">
-                    <CheckSquare size={12} /> 완료 ({new Date(lastLog.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})})
+                <div className="text-[10px] font-bold px-2 py-1 bg-white/50 rounded-md flex items-center gap-1">
+                    <CheckSquare size={10} /> 완료 ({new Date(lastLog.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})})
                 </div>
             )}
          </div>
 
          {/* Checklist Body */}
          <div className="flex-1 p-4 overflow-y-auto custom-scrollbar bg-white/30 dark:bg-black/10">
-            {items.length === 0 ? (
+            {(!items || items.length === 0) ? (
                <div className="text-center text-sm opacity-50 py-10">설정에서 업무를 추가해주세요.</div>
             ) : (
                 <div className="space-y-2">
@@ -303,20 +316,20 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
          </div>
 
          {/* Action Footer */}
-         <div className="p-4 border-t border-black/5 dark:border-white/5 bg-white/20">
+         <div className="p-4 border-t border-black/5 dark:border-white/5 bg-white/20 shrink-0">
             <button
               onClick={() => handleSaveClick(shift)}
-              disabled={items.length === 0}
+              disabled={!items || items.length === 0}
               className="w-full py-3 bg-white dark:bg-slate-800 rounded-xl font-bold shadow-sm hover:shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 text-sm disabled:opacity-50 disabled:scale-100"
             >
-               <Save size={16} /> 기록 저장 (완료 처리)
+               <Save size={16} /> 기록 저장
             </button>
             {todayLogs.length > 0 && (
                 <div className="mt-3 pt-3 border-t border-black/5 dark:border-white/5">
                     <p className="text-[10px] font-bold opacity-60 mb-2">오늘의 기록 ({todayLogs.length}건)</p>
                     <div className="space-y-1 max-h-[60px] overflow-y-auto custom-scrollbar">
                         {todayLogs.map(log => (
-                            <div key={log.id} className="flex justify-between items-center text-xs px-2 py-1 bg-white/40 rounded">
+                            <div key={log.id} className="flex justify-between items-center text-[10px] px-2 py-1 bg-white/40 rounded">
                                 <span>{new Date(log.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
                                 <AvatarStack ids={log.performedBy} staff={staff} size="xs" max={3} />
                             </div>
@@ -342,7 +355,7 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
           <div>
             <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">충격파실 관리</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400">
-               매일 아침/저녁 정기 업무를 확인하고 기록합니다.
+               매일 정기 업무를 확인하고 기록합니다.
             </p>
           </div>
         </div>
@@ -387,7 +400,7 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
                  </button>
               </div>
            )}
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full">
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full overflow-y-auto pb-4 custom-scrollbar">
               {renderChecklistCard(
                 'MORNING', 
                 '아침 업무', 
@@ -395,6 +408,14 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
                 config.morningItems,
                 morningChecks,
                 'bg-amber-50/50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-100'
+              )}
+              {renderChecklistCard(
+                'DAILY', 
+                '일상 업무', 
+                <Clock className="text-blue-500" />,
+                config.dailyItems,
+                dailyChecks,
+                'bg-blue-50/50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-100'
               )}
               {renderChecklistCard(
                 'EVENING', 
@@ -447,7 +468,7 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
                  <div className="flex items-center gap-1.5 px-2 text-xs font-bold text-slate-500 whitespace-nowrap">
                     <Filter size={14} /> 필터:
                  </div>
-                 {['ALL', 'MORNING', 'EVENING'].map((type) => (
+                 {['ALL', 'MORNING', 'DAILY', 'EVENING'].map((type) => (
                     <button
                         key={type}
                         onClick={() => setTypeFilter(type as any)}
@@ -457,7 +478,7 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
                             : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50'
                         }`}
                     >
-                        {type === 'ALL' ? '전체' : type === 'MORNING' ? '아침' : '저녁'}
+                        {type === 'ALL' ? '전체' : type === 'MORNING' ? '아침' : type === 'DAILY' ? '일상' : '저녁'}
                     </button>
                  ))}
               </div>
@@ -477,20 +498,27 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
                           <div className="space-y-3">
                              {group.items.map(log => {
                                 const isMorning = log.shiftType === 'MORNING';
+                                const isDaily = log.shiftType === 'DAILY';
                                 const themeClass = isMorning 
                                    ? 'border-amber-200 bg-amber-50 dark:bg-amber-900/10 dark:border-amber-800' 
-                                   : 'border-indigo-200 bg-indigo-50 dark:bg-indigo-900/10 dark:border-indigo-800';
+                                   : isDaily 
+                                     ? 'border-blue-200 bg-blue-50 dark:bg-blue-900/10 dark:border-blue-800'
+                                     : 'border-indigo-200 bg-indigo-50 dark:bg-indigo-900/10 dark:border-indigo-800';
                                 
                                 return (
                                    <div key={log.id} className={`p-3 rounded-xl border ${themeClass}`}>
                                       <div className="flex justify-between items-start mb-2">
                                          <div className="flex items-center gap-2">
-                                            <div className={`p-1.5 rounded-full ${isMorning ? 'bg-amber-100 text-amber-600' : 'bg-indigo-100 text-indigo-600'}`}>
-                                               {isMorning ? <Sun size={14}/> : <Moon size={14}/>}
+                                            <div className={`p-1.5 rounded-full ${
+                                                isMorning ? 'bg-amber-100 text-amber-600' 
+                                                : isDaily ? 'bg-blue-100 text-blue-600'
+                                                : 'bg-indigo-100 text-indigo-600'
+                                            }`}>
+                                               {isMorning ? <Sun size={14}/> : isDaily ? <Clock size={14} /> : <Moon size={14}/>}
                                             </div>
                                             <div>
                                                <span className="font-bold text-sm text-slate-800 dark:text-slate-200">
-                                                  {isMorning ? '아침 업무' : '저녁 업무'}
+                                                  {isMorning ? '아침 업무' : isDaily ? '일상 업무' : '저녁 업무'}
                                                </span>
                                                <span className="text-xs text-slate-500 ml-2">
                                                   {new Date(log.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
@@ -530,7 +558,11 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
         onClose={() => setConfirmingShift(null)}
         onConfirm={handleConfirmSave}
         staff={staff}
-        title={confirmingShift === 'MORNING' ? "아침 업무 완료" : "저녁 업무 완료"}
+        title={
+          confirmingShift === 'MORNING' ? "아침 업무 완료" : 
+          confirmingShift === 'DAILY' ? "일상 업무 완료" : 
+          "저녁 업무 완료"
+        }
         message="작업을 수행한 직원을 선택해주세요."
         confirmLabel="저장 완료"
       />

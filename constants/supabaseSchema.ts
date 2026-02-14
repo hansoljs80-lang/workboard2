@@ -72,7 +72,7 @@ create table if not exists public.laundry_logs (
 -- 8. SHOCKWAVE LOGS (충격파실 관리 로그) 테이블
 create table if not exists public.shockwave_logs (
     id text default uuid_generate_v4()::text primary key,
-    shift_type text not null, -- 'MORNING' or 'EVENING'
+    shift_type text not null, -- 'MORNING', 'DAILY', 'EVENING'
     checklist jsonb default '[]'::jsonb, -- Store state of checklist items
     performed_by jsonb default '[]'::jsonb,
     created_at timestamptz default now()
