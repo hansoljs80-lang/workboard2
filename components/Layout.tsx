@@ -22,7 +22,7 @@ const Layout: React.FC<LayoutProps> = ({
   isConfigured, 
   onRefresh 
 }) => {
-  const { appTitle, isSidebarOpen, toggleSidebar } = useUI();
+  const { appTitle, isSidebarOpen, toggleSidebar, setSidebarOpen } = useUI();
 
   return (
     // Use inline style for dvh to ensure compatibility
@@ -30,6 +30,14 @@ const Layout: React.FC<LayoutProps> = ({
       className="flex flex-row bg-slate-100 dark:bg-slate-950 transition-colors duration-300 overflow-hidden"
       style={{ height: '100dvh', minHeight: '100vh' }}
     >
+      {/* Mobile Backdrop Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm transition-opacity"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
       <Sidebar 
         activeTab={activeTab} 
@@ -43,19 +51,20 @@ const Layout: React.FC<LayoutProps> = ({
       />
 
       {/* Main Content Area */}
-      {/* Mobile: Increased padding-bottom to 80px (pb-20) to ensure content clears the bottom nav safely */}
-      <main className="flex-1 overflow-hidden relative flex flex-col w-full bg-slate-100 dark:bg-slate-950 transition-all duration-300 pb-20 md:pb-0">
+      {/* Mobile: Removed padding-bottom since bottom nav is gone */}
+      <main className="flex-1 overflow-hidden relative flex flex-col w-full bg-slate-100 dark:bg-slate-950 transition-all duration-300">
         
-        {/* Floating Open Button (Visible only when sidebar is closed on Desktop) */}
-        {!isSidebarOpen && (
-          <button 
-            onClick={toggleSidebar}
-            className="absolute top-3 left-3 z-40 p-2 bg-white dark:bg-slate-800 rounded-lg shadow-md border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors hidden md:block"
-            title="메뉴 열기"
-          >
-            <Menu size={20} />
-          </button>
-        )}
+        {/* Floating Open Button (Visible when sidebar is closed on Desktop, or always visible/toggleable on Mobile if needed contextually) */}
+        <button 
+          onClick={toggleSidebar}
+          className={`
+            absolute top-3 left-3 z-30 p-2 bg-white dark:bg-slate-800 rounded-lg shadow-md border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors
+            ${isSidebarOpen ? 'hidden md:hidden' : 'block'} 
+          `}
+          title="메뉴 열기"
+        >
+          <Menu size={20} />
+        </button>
 
         {/* Global Loading Bar */}
         {loading && activeTab !== Tab.SETTINGS && activeTab !== Tab.GENERAL_SETTINGS && (

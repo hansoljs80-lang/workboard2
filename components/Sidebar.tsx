@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { LayoutDashboard, Users, Database, ClipboardList, Moon, Sun, Settings as SettingsIcon, Menu, RefreshCw, PanelLeftClose, BedDouble, Shirt, Activity, Stethoscope, DoorOpen } from 'lucide-react';
 import { Tab } from '../types';
@@ -27,27 +26,45 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const { theme, toggleTheme } = useTheme();
 
+  // Helper to close sidebar on mobile when an item is clicked
+  const handleItemClick = (tab: Tab) => {
+    onTabChange(tab);
+    // On mobile (< 768px), close sidebar after selection
+    if (window.innerWidth < 768 && onToggle) {
+      onToggle();
+    }
+  };
+
+  const menuItems = [
+    { id: Tab.BOARD, label: '보드', icon: <LayoutDashboard size={20} /> },
+    { id: Tab.DRAFTS, label: '업무 목록', icon: <ClipboardList size={20} /> },
+    { id: Tab.BEDS, label: '배드 관리', icon: <BedDouble size={20} /> },
+    { id: Tab.LAUNDRY, label: '빨래 업무', icon: <Shirt size={20} /> },
+    { id: Tab.SHOCKWAVE, label: '충격파실', icon: <Activity size={20} /> },
+    { id: Tab.PT_ROOM, label: '물리치료실', icon: <Stethoscope size={20} /> },
+    { id: Tab.CHANGING_ROOM, label: '탈의실', icon: <DoorOpen size={20} /> },
+    { id: Tab.STAFF, label: '직원 관리', icon: <Users size={20} /> },
+  ];
+
   return (
     <nav className={`
-      h-16 md:h-full 
-      fixed bottom-0 left-0 right-0 
-      md:static 
+      fixed inset-y-0 left-0 z-50
+      h-full w-64
       bg-white/95 dark:bg-slate-900/95 backdrop-blur-md md:bg-slate-50 md:dark:bg-slate-900
-      border-t md:border-t-0 
-      flex md:flex-col items-center md:items-stretch 
-      justify-between md:justify-start 
-      z-50
-      shadow-[0_-4px_10px_-1px_rgba(0,0,0,0.1)] md:shadow-none
+      border-r border-slate-200 dark:border-slate-800
+      flex flex-col
+      shadow-2xl md:shadow-none
       transition-all duration-300 ease-in-out
-      overflow-hidden md:overflow-x-hidden md:overflow-y-auto custom-scrollbar
-      ${isOpen ? 'md:w-64 md:border-r border-slate-300 dark:border-slate-800' : 'md:w-0 md:p-0 md:overflow-hidden md:border-none opacity-100 md:opacity-0 pointer-events-auto md:pointer-events-none'}
+      ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+      md:static md:translate-x-0
+      ${isOpen ? 'md:w-64' : 'md:w-0 md:border-none md:overflow-hidden'}
     `}>
       
-      {/* Desktop Sidebar Header (Title + Controls) */}
-      <div className="hidden md:flex flex-col gap-4 p-4 mb-2 shrink-0">
-         <div className="flex items-start justify-between gap-2">
-            <div className="flex-1 min-w-0 pt-1">
-               <h1 className="font-bold text-lg text-slate-800 dark:text-slate-100 leading-tight break-keep">
+      {/* Sidebar Header */}
+      <div className="flex flex-col gap-4 p-4 mb-2 shrink-0">
+         <div className="flex items-center justify-between gap-2">
+            <div className={`flex-1 min-w-0 pt-1 transition-opacity duration-200 ${isOpen ? 'opacity-100' : 'opacity-0'}`}>
+               <h1 className="font-bold text-lg text-slate-800 dark:text-slate-100 leading-tight break-keep truncate">
                  {appTitle}
                </h1>
             </div>
@@ -64,139 +81,74 @@ const Sidebar: React.FC<SidebarProps> = ({
                )}
                <button 
                  onClick={onToggle}
-                 className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors"
-                 title="사이드바 닫기"
+                 className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors md:hidden"
+                 title="메뉴 닫기"
                >
                  <PanelLeftClose size={18} />
                </button>
             </div>
          </div>
-         <div className="h-px bg-slate-200 dark:bg-slate-800 w-full"></div>
       </div>
 
-      <div className="flex-1 flex md:flex-col items-center md:items-stretch justify-between md:justify-start w-full px-2 md:px-4 md:gap-1 overflow-x-auto md:overflow-visible">
-        <NavButton 
-          active={activeTab === Tab.BOARD} 
-          onClick={() => onTabChange(Tab.BOARD)} 
-          icon={<LayoutDashboard size={24} />} 
-          label="보드" 
-          fullLabel="업무 보드"
-        />
-        
-        <div className="hidden md:block h-px bg-slate-200 dark:bg-slate-800 my-2 mx-2 shrink-0"></div>
-        
-        <NavButton 
-          active={activeTab === Tab.DRAFTS} 
-          onClick={() => onTabChange(Tab.DRAFTS)} 
-          icon={<ClipboardList size={24} />} 
-          label="목록"
-          fullLabel="업무 목록" 
-        />
+      {/* Menu Items */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar px-3 space-y-1">
+        {menuItems.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => handleItemClick(item.id)}
+            className={`
+              w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all font-medium text-sm
+              ${activeTab === item.id 
+                ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' 
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800'}
+            `}
+          >
+            {item.icon}
+            {item.label}
+          </button>
+        ))}
 
-        <NavButton 
-          active={activeTab === Tab.BEDS} 
-          onClick={() => onTabChange(Tab.BEDS)} 
-          icon={<BedDouble size={24} />} 
-          label="배드"
-          fullLabel="배드 커버 관리" 
-        />
+        <div className="my-2 border-t border-slate-200 dark:border-slate-800 mx-2"></div>
 
-        <NavButton 
-          active={activeTab === Tab.LAUNDRY} 
-          onClick={() => onTabChange(Tab.LAUNDRY)} 
-          icon={<Shirt size={24} />} 
-          label="빨래"
-          fullLabel="빨래 업무" 
-        />
-
-        <NavButton 
-          active={activeTab === Tab.PT_ROOM} 
-          onClick={() => onTabChange(Tab.PT_ROOM)} 
-          icon={<Stethoscope size={24} />} 
-          label="치료실"
-          fullLabel="물리치료실 관리" 
-        />
-
-        <NavButton 
-          active={activeTab === Tab.SHOCKWAVE} 
-          onClick={() => onTabChange(Tab.SHOCKWAVE)} 
-          icon={<Activity size={24} />} 
-          label="충격파"
-          fullLabel="충격파실 관리" 
-        />
-
-        <NavButton 
-          active={activeTab === Tab.CHANGING_ROOM} 
-          onClick={() => onTabChange(Tab.CHANGING_ROOM)} 
-          icon={<DoorOpen size={24} />} 
-          label="탈의실"
-          fullLabel="탈의실 관리" 
-        />
-
-        <div className="hidden md:block h-px bg-slate-200 dark:bg-slate-800 my-2 mx-2 shrink-0"></div>
-
-        <NavButton 
-          active={activeTab === Tab.STAFF} 
-          onClick={() => onTabChange(Tab.STAFF)} 
-          icon={<Users size={24} />} 
-          label="직원"
-          fullLabel="직원 관리" 
-        />
-        
-        {/* Spacer - Desktop only */}
-        <div className="hidden md:block md:flex-1 min-h-[20px]" /> 
-        
-        <div className="hidden md:block mb-2 px-2 border-t border-slate-300 dark:border-slate-800 pt-4 whitespace-nowrap overflow-hidden shrink-0">
-           <p className="text-xs font-bold text-slate-500 dark:text-slate-500 uppercase tracking-wider">설정</p>
-        </div>
-
-        {/* Theme Toggle Button */}
-        <button 
-          onClick={toggleTheme}
-          className="flex md:flex-row flex-col items-center md:justify-start justify-center flex-1 md:flex-none w-auto md:w-full min-w-[60px] md:px-4 md:py-3 md:mb-1 rounded-xl transition-all duration-200 text-slate-500 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-white dark:hover:bg-slate-800 gap-1 md:gap-3 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 hover:shadow-sm overflow-hidden shrink-0"
+        <button
+          onClick={() => handleItemClick(Tab.GENERAL_SETTINGS)}
+          className={`
+            w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all font-medium text-sm
+            ${activeTab === Tab.GENERAL_SETTINGS 
+              ? 'bg-slate-800 text-white shadow-md' 
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800'}
+          `}
         >
-          <span className="shrink-0">{theme === 'dark' ? <Sun size={24} /> : <Moon size={24} />}</span>
-          <span className="text-[10px] md:text-sm font-medium md:font-semibold whitespace-nowrap">
-             <span className="md:hidden">테마</span>
-             <span className="hidden md:inline">{theme === 'dark' ? '라이트 모드' : '다크 모드'}</span>
-          </span>
+          <SettingsIcon size={20} />
+          일반 설정
         </button>
 
-        <NavButton 
-          active={activeTab === Tab.GENERAL_SETTINGS} 
-          onClick={() => onTabChange(Tab.GENERAL_SETTINGS)} 
-          icon={<SettingsIcon size={24} />} 
-          label="설정"
-          fullLabel="일반 설정" 
-        />
+        <button
+          onClick={() => handleItemClick(Tab.SETTINGS)}
+          className={`
+            w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all font-medium text-sm
+            ${activeTab === Tab.SETTINGS 
+              ? 'bg-slate-800 text-white shadow-md' 
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800'}
+          `}
+        >
+          <Database size={20} />
+          DB 연결
+        </button>
+      </div>
 
-        <NavButton 
-          active={activeTab === Tab.SETTINGS} 
-          onClick={() => onTabChange(Tab.SETTINGS)} 
-          icon={<Database size={24} />} 
-          label="DB"
-          fullLabel="DB 설정" 
-        />
+      {/* Footer / Theme Toggle */}
+      <div className="p-4 border-t border-slate-200 dark:border-slate-800 shrink-0">
+        <button
+          onClick={toggleTheme}
+          className="w-full flex items-center justify-center gap-2 p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+        >
+          {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
+          <span className="text-sm font-bold">{theme === 'light' ? '다크 모드' : '라이트 모드'}</span>
+        </button>
       </div>
     </nav>
   );
 };
-
-const NavButton: React.FC<{ active: boolean; onClick: () => void; icon: React.ReactNode; label: string; fullLabel?: string }> = ({ active, onClick, icon, label, fullLabel }) => (
-  <button 
-    onClick={onClick}
-    className={`flex md:flex-row flex-col items-center md:justify-start justify-center flex-1 md:flex-none w-auto md:w-full min-w-[60px] md:px-4 md:py-3 md:mb-1 rounded-xl transition-all duration-200 gap-1 md:gap-3 border overflow-hidden shrink-0 ${
-      active 
-        ? 'bg-blue-50/50 md:bg-white dark:md:bg-blue-900/20 border-slate-200 md:border-slate-300 dark:border-blue-800/50 md:shadow-sm text-blue-700 dark:text-blue-400' 
-        : 'border-transparent hover:bg-white dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-500 dark:text-slate-500 hover:shadow-sm'
-    }`}
-  >
-    <span className={`shrink-0 ${active ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'}`}>{icon}</span>
-    <span className="text-[10px] md:text-sm font-medium md:font-semibold whitespace-nowrap opacity-100 transition-opacity truncate w-full md:w-auto text-center md:text-left">
-      <span className={fullLabel ? "md:hidden" : ""}>{label}</span>
-      {fullLabel && <span className="hidden md:inline">{fullLabel}</span>}
-    </span>
-  </button>
-);
 
 export default Sidebar;

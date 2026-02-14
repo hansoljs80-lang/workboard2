@@ -24,8 +24,8 @@ export const useStaffOperations = ({ onRefresh, tasks, templates }: UseStaffOper
   }, [tasks, templates]);
 
   const handleAdd = useCallback(async (name: string, role: string, color: string) => {
-    // Dynamic import to avoid circular dependency issues if any
-    const { addStaff } = await import('../services/api');
+    // Dynamic import targeting the specific service file to avoid 'export *' resolution issues in barrel file
+    const { addStaff } = await import('../services/staffService');
     await addStaff(name, role, color);
     onRefresh();
   }, [onRefresh]);
