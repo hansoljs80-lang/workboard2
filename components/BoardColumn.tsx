@@ -82,10 +82,10 @@ const BoardColumn: React.FC<BoardColumnProps> = ({
       border-x border-b border-slate-200 dark:border-slate-800
       shadow-lg shadow-slate-200/50 dark:shadow-none
       transition-all
-      h-auto min-h-[300px] md:h-full
+      h-auto min-h-[200px] md:h-full
     `}>
       {/* 
-         Mobile: h-auto to allow growing with content (page scroll)
+         Mobile: h-auto to allow growing with content (page scroll). Reduced min-h to 200px.
          Desktop: h-full to fit container (internal scroll)
       */}
 
@@ -106,10 +106,10 @@ const BoardColumn: React.FC<BoardColumnProps> = ({
       </div>
       
       {/* Task List Area */}
-      {/* Mobile: No overflow-y-auto to prevent scroll trapping. Desktop: overflow-y-auto */}
-      <div className="p-3 flex-1 relative bg-slate-50/50 dark:bg-black/20 md:overflow-y-auto custom-scrollbar">
+      {/* Mobile: Removed flex-1 to allow proper expansion, removed overflow. Desktop: flex-1 + overflow-y-auto */}
+      <div className="p-3 relative bg-slate-50/50 dark:bg-black/20 md:overflow-y-auto md:flex-1 custom-scrollbar min-h-[150px]">
         {tasks.length > 0 ? (
-          <div className="space-y-2 pb-10">
+          <div className="space-y-2 pb-2">
             {taskList}
           </div>
         ) : (

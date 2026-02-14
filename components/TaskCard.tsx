@@ -100,28 +100,28 @@ const TaskCard: React.FC<TaskCardProps> = ({
       >
         {/* Color Indicator Strip */}
         <div 
-          className={`w-1.5 h-full absolute left-0 top-0 rounded-l-lg ${indicatorClass}`} 
+          className={`w-1.5 absolute left-0 top-0 bottom-0 rounded-l-lg ${indicatorClass}`} 
           title={indicatorLabel}
         ></div>
 
-        {/* Content Row */}
-        <div className={`flex items-center justify-between p-2 h-[56px] gap-2 pl-3 rounded-lg`}>
+        {/* Content Row - Removed fixed height h-[56px], added min-h and py */}
+        <div className={`flex items-center justify-between p-2 py-3 min-h-[3.5rem] gap-2 pl-3 rounded-lg h-auto`}>
           
           <div className="flex items-center gap-2 flex-1 min-w-0">
             {/* Title */}
             <h4 className={`
-              text-sm font-bold truncate leading-tight flex-1 flex items-center
+              text-sm font-bold leading-tight flex-1 flex flex-wrap items-center gap-1
               ${isDone ? 'text-slate-400' : 'text-slate-800 dark:text-slate-100'}
             `}>
               {isInProgress && <span className="mr-1 inline-block animate-pulse">🔥</span>}
               
               {recurrenceBadge && (
-                <span className={`text-[10px] px-1.5 py-0.5 rounded mr-1.5 font-bold shrink-0 ${recurrenceBadge.className} ${isDone ? 'opacity-75 grayscale-[0.3]' : ''}`}>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded mr-1 font-bold shrink-0 ${recurrenceBadge.className} ${isDone ? 'opacity-75 grayscale-[0.3]' : ''}`}>
                   {recurrenceBadge.label}
                 </span>
               )}
               
-              <span className={`truncate ${isDone ? 'line-through decoration-slate-400' : ''}`}>
+              <span className={`break-words ${isDone ? 'line-through decoration-slate-400' : ''}`}>
                 {task.title}
               </span>
             </h4>
@@ -143,7 +143,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
           </div>
 
           {/* Right Side Controls */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 self-start mt-0.5">
             {/* Postpone Control */}
             <TaskPostponeControl 
               task={task} 

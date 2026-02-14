@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Staff, PtRoomShift, PtRoomLog, PtRoomChecklistItem, PtRoomConfig, PtPeriodicItem } from '../types';
 import { Stethoscope, Sun, Moon, Clock, LayoutGrid, History, CheckSquare, Square, Save, AlertCircle, Copy, Filter, Settings, CalendarRange, Check, AlertTriangle, RefreshCw, CheckCircle2 } from 'lucide-react';
@@ -17,9 +18,11 @@ interface PtRoomManagerProps {
 
 type TabMode = 'status' | 'history';
 type ViewMode = 'day' | 'week' | 'month';
+type SubTab = 'MORNING' | 'DAILY' | 'EVENING' | 'PERIODIC';
 
 const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
   const [activeTab, setActiveTab] = useState<TabMode>('status');
+  const [mobileSubTab, setMobileSubTab] = useState<SubTab>('MORNING'); // Mobile Tab State
   const [opStatus, setOpStatus] = useState<OperationStatus>('idle');
   const [opMessage, setOpMessage] = useState('');
 
@@ -317,7 +320,7 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
     });
 
     return (
-      <div className="flex flex-col h-full rounded-2xl border-2 border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-900/10 shadow-sm overflow-hidden">
+      <div className="flex flex-col h-auto min-h-[500px] rounded-2xl border-2 border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-900/10 shadow-sm overflow-hidden">
          <div className="p-4 flex items-center justify-between border-b border-black/5 dark:border-white/5 shrink-0">
             <div className="flex items-center gap-3">
                <div className="p-2 bg-white/50 rounded-lg shadow-sm"><CalendarRange className="text-purple-500" /></div>
@@ -392,7 +395,7 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
         : checkedState;
 
     return (
-      <div className={`flex flex-col h-full rounded-2xl border-2 transition-all shadow-sm overflow-hidden ${theme}`}>
+      <div className={`flex flex-col h-auto min-h-[500px] rounded-2xl border-2 transition-all shadow-sm overflow-hidden ${theme}`}>
          <div className="p-4 flex items-center justify-between border-b border-black/5 dark:border-white/5 shrink-0">
             <div className="flex items-center gap-3">
                <div className="p-2 bg-white/50 rounded-lg shadow-sm">{icon}</div>
@@ -461,6 +464,36 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
     );
   };
 
+  // Card Definitions for conditional rendering
+  const morningCard = renderChecklistCard(
+    'MORNING', 
+    '아침 업무', 
+    <Sun className="text-amber-500" />,
+    config.morningItems,
+    morningChecks,
+    'bg-amber-50/50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-100'
+  );
+
+  const dailyCard = renderChecklistCard(
+    'DAILY', 
+    '일상 업무', 
+    <Clock className="text-blue-500" />,
+    config.dailyItems,
+    dailyChecks,
+    'bg-blue-50/50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-100'
+  );
+
+  const eveningCard = renderChecklistCard(
+    'EVENING', 
+    '저녁 업무', 
+    <Moon className="text-indigo-500" />,
+    config.eveningItems,
+    eveningChecks,
+    'bg-indigo-50/50 dark:bg-indigo-900/10 border-indigo-200 dark:border-indigo-800 text-indigo-900 dark:text-indigo-100'
+  );
+
+  const periodicCard = renderPeriodicList();
+
   return (
     <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 p-4 md:p-6 pb-24 overflow-hidden">
       <StatusOverlay status={opStatus} message={opMessage} />
@@ -506,9 +539,9 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
       </div>
 
       {activeTab === 'status' ? (
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden flex flex-col">
            {error === 'DATA_TABLE_MISSING' && (
-              <div className="mb-4 bg-amber-50 text-amber-800 p-3 rounded-xl border border-amber-200 flex flex-col md:flex-row items-center justify-center gap-3">
+              <div className="mb-4 bg-amber-50 text-amber-800 p-3 rounded-xl border border-amber-200 flex flex-col md:flex-row items-center justify-center gap-3 shrink-0">
                  <span className="font-bold text-sm flex items-center gap-2">
                     <AlertCircle size={16} /> DB 테이블(pt_room_logs)이 필요합니다.
                  </span>
@@ -518,35 +551,36 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
               </div>
            )}
            
-           {/* Responsive Grid for 4 Cards */}
-           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 h-full overflow-y-auto pb-4 custom-scrollbar">
-              {renderChecklistCard(
-                'MORNING', 
-                '아침 업무', 
-                <Sun className="text-amber-500" />,
-                config.morningItems,
-                morningChecks,
-                'bg-amber-50/50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-100'
-              )}
-              {renderChecklistCard(
-                'DAILY', 
-                '일상 업무', 
-                <Clock className="text-blue-500" />,
-                config.dailyItems,
-                dailyChecks,
-                'bg-blue-50/50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-100'
-              )}
-              {renderChecklistCard(
-                'EVENING', 
-                '저녁 업무', 
-                <Moon className="text-indigo-500" />,
-                config.eveningItems,
-                eveningChecks,
-                'bg-indigo-50/50 dark:bg-indigo-900/10 border-indigo-200 dark:border-indigo-800 text-indigo-900 dark:text-indigo-100'
-              )}
-              
-              {/* New Periodic Card */}
-              {renderPeriodicList()}
+           {/* Mobile Tab Navigation */}
+           <div className="md:hidden flex bg-white dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 mb-4 shrink-0 overflow-x-auto custom-scrollbar">
+              <button onClick={() => setMobileSubTab('MORNING')} className={`flex-1 flex items-center justify-center gap-2 py-2 px-1 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${mobileSubTab === 'MORNING' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : 'text-slate-400'}`}>
+                 <Sun size={16} /> 아침
+              </button>
+              <button onClick={() => setMobileSubTab('DAILY')} className={`flex-1 flex items-center justify-center gap-2 py-2 px-1 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${mobileSubTab === 'DAILY' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'text-slate-400'}`}>
+                 <Clock size={16} /> 일상
+              </button>
+              <button onClick={() => setMobileSubTab('EVENING')} className={`flex-1 flex items-center justify-center gap-2 py-2 px-1 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${mobileSubTab === 'EVENING' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400' : 'text-slate-400'}`}>
+                 <Moon size={16} /> 저녁
+              </button>
+              <button onClick={() => setMobileSubTab('PERIODIC')} className={`flex-1 flex items-center justify-center gap-2 py-2 px-1 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${mobileSubTab === 'PERIODIC' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' : 'text-slate-400'}`}>
+                 <CalendarRange size={16} /> 정기
+              </button>
+           </div>
+
+           {/* Mobile View (Single Card) */}
+           <div className="md:hidden flex-1 overflow-y-auto pb-4 custom-scrollbar">
+              {mobileSubTab === 'MORNING' && morningCard}
+              {mobileSubTab === 'DAILY' && dailyCard}
+              {mobileSubTab === 'EVENING' && eveningCard}
+              {mobileSubTab === 'PERIODIC' && periodicCard}
+           </div>
+           
+           {/* Desktop Grid for 4 Cards */}
+           <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-4 h-full overflow-y-auto pb-4 custom-scrollbar">
+              {morningCard}
+              {dailyCard}
+              {eveningCard}
+              {periodicCard}
            </div>
         </div>
       ) : (

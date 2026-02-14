@@ -125,9 +125,10 @@ const Board: React.FC<BoardProps> = ({ tasks, staff, templates = [], onRefresh }
 
       {/* 
          Mobile: overflow-y-auto allowed on main area so vertical stacked columns can scroll.
+         Added pb-24 to mobile to ensure content isn't hidden behind bottom sidebar.
          Desktop: overflow-hidden kept to ensure columns handle their own internal scrolling.
       */}
-      <div className="flex-1 overflow-y-auto md:overflow-hidden p-4 md:p-6 pb-4">
+      <div className="flex-1 overflow-y-auto md:overflow-hidden p-4 md:p-6 pb-24 md:pb-4 custom-scrollbar">
         {viewMode === 'day' ? (
           <KanbanView 
             todoTasks={todoTasks}

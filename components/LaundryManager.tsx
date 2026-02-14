@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Staff, LaundryLog, LaundryAction } from '../types';
 import { Shirt, Wind, CheckCircle2, History, LayoutGrid, AlertCircle, Database, Waves, ArrowRight, Copy, Filter, Clock, Plus } from 'lucide-react';
@@ -285,7 +286,7 @@ const LaundryManager: React.FC<LaundryManagerProps> = ({ staff }) => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 p-4 md:p-6 pb-24 overflow-hidden">
+    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 p-4 md:p-6 overflow-hidden">
       <StatusOverlay status={opStatus} message={opMessage} />
 
       {/* Header */}
@@ -320,60 +321,62 @@ const LaundryManager: React.FC<LaundryManagerProps> = ({ staff }) => {
 
       {/* Content Area */}
       {activeTab === 'status' ? (
-        <div className="flex-1 flex flex-col items-center justify-center max-w-5xl mx-auto w-full animate-fade-in">
-           {error === 'DATA_TABLE_MISSING' && (
-              <div className="mb-6 w-full bg-amber-50 text-amber-800 p-4 rounded-xl border border-amber-200 flex flex-col md:flex-row items-center justify-center gap-4">
-                 <div className="flex items-center gap-2">
-                    <AlertCircle size={20} className="text-amber-600" />
-                    <span className="font-bold">이력 저장을 위한 DB 테이블이 없습니다.</span>
-                 </div>
-                 <button 
-                   onClick={handleCopySQL}
-                   className="flex items-center gap-2 px-4 py-2 bg-amber-200 text-amber-900 rounded-lg hover:bg-amber-300 transition-colors font-bold text-sm shadow-sm"
-                 >
-                   <Copy size={14} /> SQL 코드 복사
-                 </button>
-              </div>
-           )}
-
-           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
-              {renderStageCard(
-                'WASH', 
-                '1. 빨래 넣기', 
-                <Waves size={32} className="text-blue-500" />,
-                'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-100 hover:bg-blue-100 dark:hover:bg-blue-900/40',
-                '세탁기 가동 시작'
+        <div className="flex-1 overflow-y-auto custom-scrollbar w-full">
+           <div className="flex flex-col items-center justify-start md:justify-center min-h-full max-w-5xl mx-auto w-full animate-fade-in pb-24">
+              {error === 'DATA_TABLE_MISSING' && (
+                  <div className="mb-6 w-full bg-amber-50 text-amber-800 p-4 rounded-xl border border-amber-200 flex flex-col md:flex-row items-center justify-center gap-4">
+                    <div className="flex items-center gap-2">
+                        <AlertCircle size={20} className="text-amber-600" />
+                        <span className="font-bold">이력 저장을 위한 DB 테이블이 없습니다.</span>
+                    </div>
+                    <button 
+                      onClick={handleCopySQL}
+                      className="flex items-center gap-2 px-4 py-2 bg-amber-200 text-amber-900 rounded-lg hover:bg-amber-300 transition-colors font-bold text-sm shadow-sm"
+                    >
+                      <Copy size={14} /> SQL 코드 복사
+                    </button>
+                  </div>
               )}
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
+                  {renderStageCard(
+                    'WASH', 
+                    '1. 빨래 넣기', 
+                    <Waves size={32} className="text-blue-500" />,
+                    'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-100 hover:bg-blue-100 dark:hover:bg-blue-900/40',
+                    '세탁기 가동 시작'
+                  )}
+                  
+                  <div className="md:hidden flex justify-center -my-3 opacity-30 text-slate-400">
+                    <ArrowRight size={24} className="rotate-90" />
+                  </div>
+
+                  {renderStageCard(
+                    'DRY', 
+                    '2. 건조기 가동', 
+                    <Wind size={32} className="text-orange-500" />,
+                    'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800 text-orange-900 dark:text-orange-100 hover:bg-orange-100 dark:hover:bg-orange-900/40',
+                    '건조기로 옮기기'
+                  )}
+
+                  <div className="md:hidden flex justify-center -my-3 opacity-30 text-slate-400">
+                    <ArrowRight size={24} className="rotate-90" />
+                  </div>
+
+                  {renderStageCard(
+                    'FOLD', 
+                    '3. 빨래 정리', 
+                    <CheckCircle2 size={32} className="text-emerald-500" />,
+                    'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-100 hover:bg-emerald-100 dark:hover:bg-emerald-900/40',
+                    '개어서 수납함으로'
+                  )}
+              </div>
               
-              <div className="md:hidden flex justify-center -my-3 opacity-30 text-slate-400">
-                 <ArrowRight size={24} className="rotate-90" />
-              </div>
-
-              {renderStageCard(
-                'DRY', 
-                '2. 건조기 가동', 
-                <Wind size={32} className="text-orange-500" />,
-                'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800 text-orange-900 dark:text-orange-100 hover:bg-orange-100 dark:hover:bg-orange-900/40',
-                '건조기로 옮기기'
-              )}
-
-              <div className="md:hidden flex justify-center -my-3 opacity-30 text-slate-400">
-                 <ArrowRight size={24} className="rotate-90" />
-              </div>
-
-              {renderStageCard(
-                'FOLD', 
-                '3. 빨래 정리', 
-                <CheckCircle2 size={32} className="text-emerald-500" />,
-                'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-100 hover:bg-emerald-100 dark:hover:bg-emerald-900/40',
-                '개어서 수납함으로'
-              )}
+              <p className="mt-8 text-sm text-slate-400 dark:text-slate-500 flex items-center gap-2">
+                <AlertCircle size={14} />
+                카드를 터치하여 수행 인원을 기록하세요. (하루에 여러 번 기록 가능)
+              </p>
            </div>
-           
-           <p className="mt-8 text-sm text-slate-400 dark:text-slate-500 flex items-center gap-2">
-             <AlertCircle size={14} />
-             카드를 터치하여 수행 인원을 기록하세요. (하루에 여러 번 기록 가능)
-           </p>
         </div>
       ) : (
         <div className="flex-1 overflow-hidden flex flex-col md:flex-row gap-4 animate-fade-in">
