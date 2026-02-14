@@ -11,6 +11,8 @@ import PtRoomStats from './pt/PtRoomStats';
 import PtRoomConfigModal from './pt/PtRoomConfigModal';
 import { getWeekRange } from '../utils/dateUtils';
 import { SUPABASE_SCHEMA_SQL } from '../constants/supabaseSchema';
+import GenericChecklistCard from './common/GenericChecklistCard';
+import MobileTabSelector from './common/MobileTabSelector';
 
 interface PtRoomManagerProps {
   staff: Staff[];
@@ -216,11 +218,12 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
     alert("SQL 코드가 클립보드에 복사되었습니다.\nSupabase 대시보드 > SQL Editor에서 실행해주세요.");
   };
 
-  const getTodayLogs = (shift: PtRoomShift) => {
-    if (activeTab !== 'status') return [];
-    return logs
+  const getTodayLog = (shift: PtRoomShift) => {
+    if (activeTab !== 'status') return null;
+    const shiftLogs = logs
       .filter(l => l.shiftType === shift)
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return shiftLogs.length > 0 ? shiftLogs[0] : null;
   };
 
   // Stats Logic
@@ -379,120 +382,36 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
     );
   };
 
-  const renderChecklistCard = (
-    shift: PtRoomShift, 
-    title: string, 
-    icon: React.ReactNode, 
-    items: { id: string, label: string }[],
-    checkedState: string[],
-    theme: string
-  ) => {
-    const todayLogs = getTodayLogs(shift);
-    const lastLog = todayLogs.length > 0 ? todayLogs[0] : null;
-
-    const effectiveChecks = (lastLog && checkedState.length === 0) 
-        ? lastLog.checklist.filter(c => c.checked).map(c => c.id) 
-        : checkedState;
-
-    return (
-      <div className={`flex flex-col h-auto min-h-[500px] rounded-2xl border-2 transition-all shadow-sm overflow-hidden ${theme}`}>
-         <div className="p-4 flex items-center justify-between border-b border-black/5 dark:border-white/5 shrink-0">
-            <div className="flex items-center gap-3">
-               <div className="p-2 bg-white/50 rounded-lg shadow-sm">{icon}</div>
-               <h3 className="text-lg font-bold">{title}</h3>
-            </div>
-            {lastLog && (
-                <div className="text-[10px] font-bold px-2 py-1 bg-white/50 rounded-md flex items-center gap-1">
-                    <CheckSquare size={10} /> 완료 ({new Date(lastLog.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})})
-                </div>
-            )}
-         </div>
-
-         <div className="flex-1 p-4 overflow-y-auto custom-scrollbar bg-white/30 dark:bg-black/10">
-            {(!items || items.length === 0) ? (
-               <div className="text-center text-sm opacity-50 py-10">설정에서 업무를 추가해주세요.</div>
-            ) : (
-                <div className="space-y-2">
-                {items.map(item => {
-                    const isChecked = effectiveChecks.includes(item.id);
-                    return (
-                    <button
-                        key={item.id}
-                        onClick={() => toggleCheck(shift, item.id)}
-                        className={`w-full flex items-start gap-3 p-3 rounded-xl border text-left transition-all ${
-                            isChecked 
-                            ? 'bg-white dark:bg-slate-800 border-emerald-200 dark:border-emerald-900/50 shadow-sm' 
-                            : 'bg-white/40 dark:bg-slate-800/40 border-black/5 dark:border-white/5 hover:bg-white/60'
-                        }`}
-                    >
-                        <div className={`mt-0.5 shrink-0 transition-colors ${isChecked ? 'text-emerald-500' : 'text-slate-400'}`}>
-                            {isChecked ? <CheckSquare size={20} /> : <Square size={20} />}
-                        </div>
-                        <span className={`text-sm font-medium transition-all ${isChecked ? 'text-slate-400 dark:text-slate-500 line-through decoration-slate-300 dark:decoration-slate-600' : 'text-slate-700 dark:text-slate-200'}`}>
-                            {item.label}
-                        </span>
-                    </button>
-                    );
-                })}
-                </div>
-            )}
-         </div>
-
-         <div className="p-4 border-t border-black/5 dark:border-white/5 bg-white/20 shrink-0">
-            <button
-              onClick={() => handleSaveClick(shift)}
-              disabled={!items || items.length === 0}
-              className="w-full py-3 bg-white dark:bg-slate-800 rounded-xl font-bold shadow-sm hover:shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 text-sm disabled:opacity-50 disabled:scale-100"
-            >
-               <Save size={16} /> 기록 저장
-            </button>
-            {todayLogs.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-black/5 dark:border-white/5">
-                    <p className="text-[10px] font-bold opacity-60 mb-2">오늘의 기록 ({todayLogs.length}건)</p>
-                    <div className="space-y-1 max-h-[60px] overflow-y-auto custom-scrollbar">
-                        {todayLogs.map(log => (
-                            <div key={log.id} className="flex justify-between items-center text-[10px] px-2 py-1 bg-white/40 rounded">
-                                <span>{new Date(log.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
-                                <AvatarStack ids={log.performedBy} staff={staff} size="xs" max={3} />
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-         </div>
-      </div>
-    );
-  };
-
-  // Card Definitions for conditional rendering
-  const morningCard = renderChecklistCard(
-    'MORNING', 
-    '아침 업무', 
-    <Sun className="text-amber-500" />,
-    config.morningItems,
-    morningChecks,
-    'bg-amber-50/50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-100'
-  );
-
-  const dailyCard = renderChecklistCard(
-    'DAILY', 
-    '일상 업무', 
-    <Clock className="text-blue-500" />,
-    config.dailyItems,
-    dailyChecks,
-    'bg-blue-50/50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-100'
-  );
-
-  const eveningCard = renderChecklistCard(
-    'EVENING', 
-    '저녁 업무', 
-    <Moon className="text-indigo-500" />,
-    config.eveningItems,
-    eveningChecks,
-    'bg-indigo-50/50 dark:bg-indigo-900/10 border-indigo-200 dark:border-indigo-800 text-indigo-900 dark:text-indigo-100'
-  );
-
-  const periodicCard = renderPeriodicList();
+  // Cards Data
+  const cards = [
+    {
+      shift: 'MORNING' as PtRoomShift,
+      title: '아침 업무',
+      icon: <Sun className="text-amber-500" />,
+      items: config.morningItems,
+      checks: morningChecks,
+      theme: 'bg-amber-50/50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-100',
+      activeColor: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+    },
+    {
+      shift: 'DAILY' as PtRoomShift,
+      title: '일상 업무',
+      icon: <Clock className="text-blue-500" />,
+      items: config.dailyItems,
+      checks: dailyChecks,
+      theme: 'bg-blue-50/50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-100',
+      activeColor: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+    },
+    {
+      shift: 'EVENING' as PtRoomShift,
+      title: '저녁 업무',
+      icon: <Moon className="text-indigo-500" />,
+      items: config.eveningItems,
+      checks: eveningChecks,
+      theme: 'bg-indigo-50/50 dark:bg-indigo-900/10 border-indigo-200 dark:border-indigo-800 text-indigo-900 dark:text-indigo-100',
+      activeColor: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400'
+    }
+  ];
 
   return (
     <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 p-4 md:p-6 pb-24 overflow-hidden">
@@ -551,36 +470,63 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
               </div>
            )}
            
-           {/* Mobile Tab Navigation */}
-           <div className="md:hidden flex bg-white dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 mb-4 shrink-0 overflow-x-auto custom-scrollbar">
-              <button onClick={() => setMobileSubTab('MORNING')} className={`flex-1 flex items-center justify-center gap-2 py-2 px-1 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${mobileSubTab === 'MORNING' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : 'text-slate-400'}`}>
-                 <Sun size={16} /> 아침
-              </button>
-              <button onClick={() => setMobileSubTab('DAILY')} className={`flex-1 flex items-center justify-center gap-2 py-2 px-1 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${mobileSubTab === 'DAILY' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'text-slate-400'}`}>
-                 <Clock size={16} /> 일상
-              </button>
-              <button onClick={() => setMobileSubTab('EVENING')} className={`flex-1 flex items-center justify-center gap-2 py-2 px-1 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${mobileSubTab === 'EVENING' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400' : 'text-slate-400'}`}>
-                 <Moon size={16} /> 저녁
-              </button>
-              <button onClick={() => setMobileSubTab('PERIODIC')} className={`flex-1 flex items-center justify-center gap-2 py-2 px-1 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${mobileSubTab === 'PERIODIC' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' : 'text-slate-400'}`}>
-                 <CalendarRange size={16} /> 정기
-              </button>
-           </div>
+           <MobileTabSelector 
+             activeTab={mobileSubTab}
+             onTabChange={setMobileSubTab}
+             tabs={[
+               ...cards.map(c => ({
+                 value: c.shift,
+                 label: c.title.replace(' 업무', ''),
+                 icon: c.icon,
+                 activeColorClass: c.activeColor
+               })),
+               {
+                 value: 'PERIODIC' as PtRoomShift,
+                 label: '정기',
+                 icon: <CalendarRange size={16} />,
+                 activeColorClass: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+               }
+             ]}
+           />
 
            {/* Mobile View (Single Card) */}
            <div className="md:hidden flex-1 overflow-y-auto pb-4 custom-scrollbar">
-              {mobileSubTab === 'MORNING' && morningCard}
-              {mobileSubTab === 'DAILY' && dailyCard}
-              {mobileSubTab === 'EVENING' && eveningCard}
-              {mobileSubTab === 'PERIODIC' && periodicCard}
+              {cards.map(card => (
+                 mobileSubTab === card.shift && (
+                   <GenericChecklistCard 
+                     key={card.shift}
+                     title={card.title}
+                     icon={card.icon}
+                     items={card.items}
+                     checkedIds={card.checks}
+                     onToggle={(id) => toggleCheck(card.shift, id)}
+                     onSave={() => handleSaveClick(card.shift)}
+                     theme={card.theme}
+                     staff={staff}
+                     lastLog={getTodayLog(card.shift)}
+                   />
+                 )
+              ))}
+              {mobileSubTab === 'PERIODIC' && renderPeriodicList()}
            </div>
            
            {/* Desktop Grid for 4 Cards */}
            <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-4 h-full overflow-y-auto pb-4 custom-scrollbar">
-              {morningCard}
-              {dailyCard}
-              {eveningCard}
-              {periodicCard}
+              {cards.map(card => (
+                 <GenericChecklistCard 
+                   key={card.shift}
+                   title={card.title}
+                   icon={card.icon}
+                   items={card.items}
+                   checkedIds={card.checks}
+                   onToggle={(id) => toggleCheck(card.shift, id)}
+                   onSave={() => handleSaveClick(card.shift)}
+                   theme={card.theme}
+                   staff={staff}
+                   lastLog={getTodayLog(card.shift)}
+                 />
+              ))}
+              {renderPeriodicList()}
            </div>
         </div>
       ) : (
