@@ -1,7 +1,8 @@
+
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { BedData, Staff } from '../types';
 import { calculateBedStatus } from '../utils/bedUtils';
-import { RefreshCw, AlertTriangle, CheckCircle2, Pencil, Check, X, CalendarClock, ThumbsUp } from 'lucide-react';
+import { RefreshCw, AlertTriangle, CheckCircle2, Pencil, Check, X, CalendarClock, ThumbsUp, Undo2, UserPen } from 'lucide-react';
 import AvatarStack from './common/AvatarStack';
 
 interface BedCardProps {
@@ -10,9 +11,11 @@ interface BedCardProps {
   interval: number;
   onChange: () => void;
   onNameChange: (id: number, name: string) => void;
+  onUndo: (id: number) => void;
+  onEditStaff: (id: number) => void;
 }
 
-const BedCard: React.FC<BedCardProps> = ({ bed, staff, interval, onChange, onNameChange }) => {
+const BedCard: React.FC<BedCardProps> = ({ bed, staff, interval, onChange, onNameChange, onUndo, onEditStaff }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(bed.name);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -66,7 +69,7 @@ const BedCard: React.FC<BedCardProps> = ({ bed, staff, interval, onChange, onNam
   // Button Theme
   // Valid (Success) -> Blue Button
   const buttonTheme = {
-    today: 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200 dark:shadow-none',
+    today: 'bg-slate-200 hover:bg-slate-300 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300 shadow-sm', // Undo Style
     danger: 'bg-red-600 hover:bg-red-700 text-white shadow-red-200 dark:shadow-none',
     warning: 'bg-orange-500 hover:bg-orange-600 text-white shadow-orange-200 dark:shadow-none',
     success: 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200 dark:shadow-none',
@@ -184,18 +187,25 @@ const BedCard: React.FC<BedCardProps> = ({ bed, staff, interval, onChange, onNam
       {/* Action Button */}
       <div className="mt-auto">
         <button
-          onClick={onChange}
-          disabled={isEditing || status === 'today'}
+          onClick={(e) => {
+             e.stopPropagation();
+             if (status === 'today') {
+                onUndo(bed.id);
+             } else {
+                onChange();
+             }
+          }}
+          disabled={isEditing}
           className={`
              w-full py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm
              ${buttonTheme}
-             ${isEditing || status === 'today' ? 'opacity-50 cursor-not-allowed' : ''}
+             ${isEditing ? 'opacity-50 cursor-not-allowed' : ''}
           `}
         >
           {status === 'today' ? (
              <>
-               <Check size={14} />
-               완료됨
+               <Undo2 size={14} />
+               실수/취소
              </>
           ) : (
              <>
@@ -208,13 +218,25 @@ const BedCard: React.FC<BedCardProps> = ({ bed, staff, interval, onChange, onNam
 
       {/* Staff Avatar (Absolute Top Right) */}
       {bed.lastChangedBy && bed.lastChangedBy.length > 0 && !isEditing && (
-         <div className="absolute top-2 right-2">
-             <AvatarStack 
-               ids={bed.lastChangedBy} 
-               staff={staff} 
-               size="xs" 
-               max={1} 
-             />
+         <div 
+           className="absolute top-2 right-2 cursor-pointer group"
+           onClick={(e) => {
+             e.stopPropagation();
+             onEditStaff(bed.id);
+           }}
+           title="수행 직원 수정"
+         >
+             <div className="relative">
+                <AvatarStack 
+                  ids={bed.lastChangedBy} 
+                  staff={staff} 
+                  size="xs" 
+                  max={1} 
+                />
+                <div className="absolute -bottom-1 -right-1 bg-white dark:bg-slate-700 rounded-full p-0.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                   <UserPen size={10} className="text-blue-500" />
+                </div>
+             </div>
          </div>
       )}
     </div>

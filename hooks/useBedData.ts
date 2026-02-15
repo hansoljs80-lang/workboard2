@@ -114,6 +114,55 @@ export const useBedData = (settings: Record<string, any>, tasks: Task[], onRefre
     }
   };
 
+  // 3.5 Action: Undo Change (Revert to never changed / unknown)
+  // Note: Since we don't store history stack in `beds` json, we can only revert to 'null' (unknown/overdue).
+  const undoBedChange = async (bedId: number) => {
+    if (!window.confirm('정말 완료 처리를 취소하시겠습니까?\n상태가 초기화됩니다.')) return;
+
+    setOpStatus('loading');
+    setOpMessage('취소 처리 중...');
+
+    try {
+      const updatedBeds = beds.map(b => 
+        b.id === bedId ? { ...b, lastChanged: null, lastChangedBy: [] } : b
+      );
+      
+      setBeds(updatedBeds);
+      await saveData(updatedBeds, config);
+      
+      setOpStatus('success');
+      setOpMessage('취소되었습니다.');
+    } catch (e) {
+      setOpStatus('error');
+      setOpMessage('오류 발생');
+    } finally {
+      setTimeout(() => setOpStatus('idle'), 1000);
+    }
+  };
+
+  // 3.6 Action: Update Staff Only
+  const updateBedStaff = async (bedId: number, staffIds: string[]) => {
+    setOpStatus('loading');
+    setOpMessage('수행 직원 수정 중...');
+
+    try {
+      const updatedBeds = beds.map(b => 
+        b.id === bedId ? { ...b, lastChangedBy: staffIds } : b
+      );
+      
+      setBeds(updatedBeds);
+      await saveData(updatedBeds, config);
+      
+      setOpStatus('success');
+      setOpMessage('수정 완료');
+    } catch (e) {
+      setOpStatus('error');
+      setOpMessage('수정 실패');
+    } finally {
+      setTimeout(() => setOpStatus('idle'), 1000);
+    }
+  };
+
   // 4. Action: Rename Bed
   const updateBedName = async (bedId: number, newName: string) => {
     // UI Local Update first
@@ -222,6 +271,8 @@ export const useBedData = (settings: Record<string, any>, tasks: Task[], onRefre
     opStatus,
     opMessage,
     handleBedChange,
+    undoBedChange,
+    updateBedStaff,
     updateBedName, 
     handleGenerateRoutine,
     updateConfig

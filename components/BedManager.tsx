@@ -19,11 +19,15 @@ interface BedManagerProps {
 }
 
 type TabMode = 'status' | 'history';
+type ModalMode = 'none' | 'complete' | 'edit';
 
 const BedManager: React.FC<BedManagerProps> = ({ staff, tasks, settings, onRefresh, onNavigateToBoard }) => {
   const [activeTab, setActiveTab] = useState<TabMode>('status');
   const [isConfigOpen, setIsConfigOpen] = useState(false);
-  const [changeModalBedId, setChangeModalBedId] = useState<number | null>(null);
+  
+  // Modal State
+  const [activeBedId, setActiveBedId] = useState<number | null>(null);
+  const [modalMode, setModalMode] = useState<ModalMode>('none');
   
   // Use Custom Hook for Logic
   const { 
@@ -32,6 +36,8 @@ const BedManager: React.FC<BedManagerProps> = ({ staff, tasks, settings, onRefre
     opStatus, 
     opMessage, 
     handleBedChange, 
+    undoBedChange,
+    updateBedStaff,
     updateBedName,
     updateConfig 
   } = useBedData(settings, tasks, onRefresh);
@@ -48,10 +54,26 @@ const BedManager: React.FC<BedManagerProps> = ({ staff, tasks, settings, onRefre
     return isToday ? `${dateStr} (오늘)` : dateStr;
   }, [config.routineDay]);
 
-  const targetBedName = useMemo(() => {
-    if (changeModalBedId === null) return '';
-    return beds.find(b => b.id === changeModalBedId)?.name || '';
-  }, [changeModalBedId, beds]);
+  const targetBed = useMemo(() => {
+    if (activeBedId === null) return null;
+    return beds.find(b => b.id === activeBedId);
+  }, [activeBedId, beds]);
+
+  // Handlers to open modal
+  const handleOpenComplete = (bedId: number) => {
+    setActiveBedId(bedId);
+    setModalMode('complete');
+  };
+
+  const handleOpenEdit = (bedId: number) => {
+    setActiveBedId(bedId);
+    setModalMode('edit');
+  };
+
+  const closeModal = () => {
+    setActiveBedId(null);
+    setModalMode('none');
+  };
 
   return (
     <div className="p-4 md:p-6 w-full h-full overflow-y-auto pb-6 relative bg-slate-50 dark:bg-slate-950 flex flex-col">
@@ -132,8 +154,10 @@ const BedManager: React.FC<BedManagerProps> = ({ staff, tasks, settings, onRefre
                   bed={bed}
                   staff={staff}
                   interval={config.interval}
-                  onChange={() => setChangeModalBedId(bed.id)}
+                  onChange={() => handleOpenComplete(bed.id)}
                   onNameChange={updateBedName}
+                  onUndo={undoBedChange}
+                  onEditStaff={handleOpenEdit}
                 />
               ))}
             </div>
@@ -160,15 +184,21 @@ const BedManager: React.FC<BedManagerProps> = ({ staff, tasks, settings, onRefre
         />
       )}
 
-      {/* Bed Change Confirmation Modal */}
+      {/* Bed Change / Edit Modal */}
       <BedChangeModal 
-        isOpen={changeModalBedId !== null}
-        bedName={targetBedName}
+        isOpen={modalMode !== 'none'}
+        bedName={targetBed?.name || ''}
         staff={staff}
-        onClose={() => setChangeModalBedId(null)}
+        initialSelection={modalMode === 'edit' && targetBed?.lastChangedBy ? targetBed.lastChangedBy : []}
+        isEditMode={modalMode === 'edit'}
+        onClose={closeModal}
         onConfirm={(staffIds) => {
-           if (changeModalBedId !== null) {
-              handleBedChange(changeModalBedId, staffIds);
+           if (activeBedId !== null) {
+              if (modalMode === 'edit') {
+                 updateBedStaff(activeBedId, staffIds);
+              } else {
+                 handleBedChange(activeBedId, staffIds);
+              }
            }
         }}
       />
