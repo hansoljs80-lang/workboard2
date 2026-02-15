@@ -1,6 +1,6 @@
 
 export const SUPABASE_SCHEMA_SQL = `
--- 물리치료실 업무 보드 Supabase 초기화 스크립트 (v19 - Consumables Pack Unit)
+-- 물리치료실 업무 보드 Supabase 초기화 스크립트 (v20 - Consumables Reorder Threshold)
 -- Supabase 대시보드 > SQL Editor에 복사하여 실행하세요.
 
 -- 1. UUID 확장 기능 활성화 (필수)
@@ -111,6 +111,9 @@ create table if not exists public.consumables (
     -- [Added for v19] Pack Unit Support
     items_per_pack integer default 1,
     pack_unit text,
+    
+    -- [Added for v20] Reorder Threshold
+    min_count integer default 0,
 
     vendor_name text,
     vendor_phone text,
@@ -122,6 +125,7 @@ create table if not exists public.consumables (
 -- [Fix] Ensure columns exist
 alter table public.consumables add column if not exists items_per_pack integer default 1;
 alter table public.consumables add column if not exists pack_unit text;
+alter table public.consumables add column if not exists min_count integer default 0;
 
 -- 12. EQUIPMENTS (장비 관리) 테이블 (New)
 create table if not exists public.equipments (

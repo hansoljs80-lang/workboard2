@@ -87,6 +87,9 @@ export interface Consumable {
   itemsPerPack?: number; // 묶음 당 낱개 수 (예: 800)
   packUnit?: string;     // 묶음 단위 명 (예: Box)
   
+  // Reorder Threshold
+  minCount?: number;     // 최소 유지 수량 (이 값 이하일 때 경고)
+
   vendorName?: string;
   vendorPhone?: string;
   note?: string;

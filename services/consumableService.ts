@@ -22,6 +22,7 @@ export const fetchConsumables = async (): Promise<{ success: boolean; data?: Con
       unit: row.unit,
       itemsPerPack: row.items_per_pack,
       packUnit: row.pack_unit,
+      minCount: row.min_count || 0, // Load minCount
       vendorName: row.vendor_name,
       vendorPhone: row.vendor_phone,
       note: row.note,
@@ -46,6 +47,7 @@ export const addConsumable = async (item: Omit<Consumable, 'id' | 'updatedAt'>) 
       unit: item.unit,
       items_per_pack: item.itemsPerPack,
       pack_unit: item.packUnit,
+      min_count: item.minCount, // Save minCount
       vendor_name: item.vendorName,
       vendor_phone: item.vendorPhone,
       note: item.note,
@@ -72,6 +74,7 @@ export const updateConsumable = async (id: string, updates: Partial<Consumable>)
     if (updates.unit !== undefined) dbUpdates.unit = updates.unit;
     if (updates.itemsPerPack !== undefined) dbUpdates.items_per_pack = updates.itemsPerPack;
     if (updates.packUnit !== undefined) dbUpdates.pack_unit = updates.packUnit;
+    if (updates.minCount !== undefined) dbUpdates.min_count = updates.minCount; // Update minCount
     if (updates.vendorName !== undefined) dbUpdates.vendor_name = updates.vendorName;
     if (updates.vendorPhone !== undefined) dbUpdates.vendor_phone = updates.vendorPhone;
     if (updates.note !== undefined) dbUpdates.note = updates.note;

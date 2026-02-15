@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Consumable } from '../../types';
-import { X, Save, Layers, Box, Type } from 'lucide-react';
+import { X, Save, Layers, AlertCircle } from 'lucide-react';
 import { addConsumable, updateConsumable } from '../../services/consumableService';
 
 interface ConsumableFormModalProps {
@@ -33,6 +33,9 @@ const ConsumableFormModal: React.FC<ConsumableFormModalProps> = ({
     currentPacks: 0 // Used for input, eventually updates formData.count
   });
 
+  // Reorder Threshold State (Input value)
+  const [alertThresholdInput, setAlertThresholdInput] = useState<number>(0);
+
   const [loading, setLoading] = useState(false);
   
   // Suggestions
@@ -42,6 +45,7 @@ const ConsumableFormModal: React.FC<ConsumableFormModalProps> = ({
   useEffect(() => {
     if (initialData) {
       const hasPackInfo = initialData.itemsPerPack && initialData.itemsPerPack > 1;
+      const minCount = initialData.minCount || 0;
       
       setFormData({
         name: initialData.name,
@@ -55,11 +59,17 @@ const ConsumableFormModal: React.FC<ConsumableFormModalProps> = ({
 
       if (hasPackInfo) {
         setIsPackMode(true);
+        const perPack = initialData.itemsPerPack || 100;
         setPackData({
           packUnit: initialData.packUnit || 'Box',
-          itemsPerPack: initialData.itemsPerPack || 100,
-          currentPacks: parseFloat((initialData.count / (initialData.itemsPerPack || 1)).toFixed(2))
+          itemsPerPack: perPack,
+          currentPacks: parseFloat((initialData.count / perPack).toFixed(2))
         });
+        // If in pack mode, show threshold as packs
+        setAlertThresholdInput(parseFloat((minCount / perPack).toFixed(2)));
+      } else {
+        // If in unit mode, show threshold as units
+        setAlertThresholdInput(minCount);
       }
     }
   }, [initialData]);
@@ -82,14 +92,18 @@ const ConsumableFormModal: React.FC<ConsumableFormModalProps> = ({
     try {
       const finalData: any = { ...formData };
       
-      // If Pack Mode, include pack info. If not, explicitly nullify or set defaults
+      // Calculate Total Min Count based on mode
+      let totalMinCount = 0;
       if (isPackMode) {
+        totalMinCount = Math.round(alertThresholdInput * packData.itemsPerPack);
         finalData.itemsPerPack = packData.itemsPerPack;
         finalData.packUnit = packData.packUnit;
       } else {
+        totalMinCount = alertThresholdInput;
         finalData.itemsPerPack = 1;
         finalData.packUnit = null;
       }
+      finalData.minCount = totalMinCount;
 
       if (initialData) {
         await updateConsumable(initialData.id, finalData);
@@ -151,7 +165,7 @@ const ConsumableFormModal: React.FC<ConsumableFormModalProps> = ({
            <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700 transition-all">
               <div className="flex justify-between items-center mb-4">
                  <label className="text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-                    <Layers size={16} className="text-blue-500" /> 재고 및 단위 설정
+                    <Layers size={16} className="text-blue-500" /> 재고 및 알림 설정
                  </label>
                  
                  {/* Mode Toggle */}
@@ -161,14 +175,14 @@ const ConsumableFormModal: React.FC<ConsumableFormModalProps> = ({
                       onClick={() => setIsPackMode(false)}
                       className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${!isPackMode ? 'bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm' : 'text-slate-400'}`}
                     >
-                      낱개 관리
+                      낱개
                     </button>
                     <button
                       type="button"
                       onClick={() => setIsPackMode(true)}
                       className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${isPackMode ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-400'}`}
                     >
-                      묶음(Box) 관리
+                      묶음(Box)
                     </button>
                  </div>
               </div>
@@ -228,6 +242,26 @@ const ConsumableFormModal: React.FC<ConsumableFormModalProps> = ({
                           </div>
                        </div>
                     </div>
+
+                    {/* Reorder Threshold (Packs) */}
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 mb-1 flex items-center gap-1">
+                           <AlertCircle size={12} className="text-red-500" /> 
+                           재구매 알림 기준 (묶음)
+                        </label>
+                        <div className="flex items-center gap-2">
+                           <input 
+                             type="number" min="0" step="0.1"
+                             value={alertThresholdInput}
+                             onChange={(e) => setAlertThresholdInput(parseFloat(e.target.value) || 0)}
+                             className="w-full p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg text-sm font-bold text-center"
+                           />
+                           <span className="text-sm text-slate-500">{packData.packUnit} 이하일 때</span>
+                        </div>
+                        <p className="text-[10px] text-slate-400 mt-1">
+                           약 {(alertThresholdInput * packData.itemsPerPack).toLocaleString()} {formData.unit} 이하가 되면 빨간색으로 표시됩니다.
+                        </p>
+                    </div>
                     
                     {/* Unit Name (Bottom) */}
                     <div>
@@ -244,28 +278,50 @@ const ConsumableFormModal: React.FC<ConsumableFormModalProps> = ({
                     </div>
                  </div>
               ) : (
-                 <div className="flex gap-3 items-end animate-fade-in">
-                    <div className="flex-1">
-                       <label className="block text-xs font-bold text-slate-500 mb-1">현재 총 재고량</label>
-                       <input 
-                         type="number" 
-                         min="0"
-                         value={formData.count}
-                         onChange={e => setFormData({...formData, count: parseInt(e.target.value) || 0})}
-                         className="w-full p-3 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-600 rounded-xl text-xl font-black text-center focus:border-blue-500 outline-none"
-                       />
+                 <div className="space-y-4 animate-fade-in">
+                    <div className="flex gap-3 items-end">
+                        <div className="flex-1">
+                           <label className="block text-xs font-bold text-slate-500 mb-1">현재 총 재고량</label>
+                           <input 
+                             type="number" 
+                             min="0"
+                             value={formData.count}
+                             onChange={e => setFormData({...formData, count: parseInt(e.target.value) || 0})}
+                             className="w-full p-3 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-600 rounded-xl text-xl font-black text-center focus:border-blue-500 outline-none"
+                           />
+                        </div>
+                        <div className="w-24">
+                           <label className="block text-xs font-bold text-slate-500 mb-1">단위</label>
+                           <input 
+                             type="text" 
+                             list="unit-options"
+                             value={formData.unit}
+                             onChange={e => setFormData({...formData, unit: e.target.value})}
+                             className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl text-sm text-center"
+                             placeholder="개"
+                           />
+                           <datalist id="unit-options">{UNIT_SUGGESTIONS.map(u => <option key={u} value={u} />)}</datalist>
+                        </div>
                     </div>
-                    <div className="w-24">
-                       <label className="block text-xs font-bold text-slate-500 mb-1">단위</label>
-                       <input 
-                         type="text" 
-                         list="unit-options"
-                         value={formData.unit}
-                         onChange={e => setFormData({...formData, unit: e.target.value})}
-                         className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl text-sm text-center"
-                         placeholder="개"
-                       />
-                       <datalist id="unit-options">{UNIT_SUGGESTIONS.map(u => <option key={u} value={u} />)}</datalist>
+
+                    {/* Reorder Threshold (Units) */}
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 mb-1 flex items-center gap-1">
+                           <AlertCircle size={12} className="text-red-500" /> 
+                           재구매 알림 기준 (낱개)
+                        </label>
+                        <div className="flex items-center gap-2">
+                           <input 
+                             type="number" min="0"
+                             value={alertThresholdInput}
+                             onChange={(e) => setAlertThresholdInput(parseInt(e.target.value) || 0)}
+                             className="w-full p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg text-sm font-bold text-center"
+                           />
+                           <span className="text-sm text-slate-500">{formData.unit} 이하일 때</span>
+                        </div>
+                        <p className="text-[10px] text-slate-400 mt-1">
+                           설정한 개수 이하가 되면 빨간색으로 표시됩니다.
+                        </p>
                     </div>
                  </div>
               )}
