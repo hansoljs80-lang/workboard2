@@ -100,21 +100,31 @@ const GenericHistoryView: React.FC<GenericHistoryViewProps> = ({
     return Array.from(itemMap.entries());
   }, [logs, activeTab]);
 
-  // 4. Stats Calculation
+  // 4. Stats Calculation (Updated to count items)
   const stats = useMemo(() => {
     const counts: Record<string, number> = {};
     
     filteredLogs.forEach(log => {
-      // If filtering by specific item, count based on who performed THAT item if available
+      let weight = 0;
+
+      // Calculate weight based on checked items
       if (detailFilterId !== 'ALL') {
-         // Try to find specific performer for the item (not supported in current DB schema fully yet, 
-         // but `performedBy` on item level was added recently. Fallback to log performer)
-         // Current schema: log.checklist[i].performedBy (string name) vs log.performedBy (array of IDs)
-         // Since we need ID for avatar, we rely on log.performedBy for now.
-         log.performedBy.forEach(pid => counts[pid] = (counts[pid] || 0) + 1);
+         // If filtering by specific item, counting logic is effectively 1 per log
+         // because we filtered the logs to only those containing the item.
+         weight = 1;
       } else {
-         // General Log Count
-         log.performedBy.forEach(pid => counts[pid] = (counts[pid] || 0) + 1);
+         // General View: Sum of ALL checked items in this log
+         if (log.checklist && log.checklist.length > 0) {
+            weight = log.checklist.filter(i => i.checked).length;
+         } else {
+            // Fallback for logs without checklist structure (e.g. legacy or other types)
+            // assuming 1 action per log if checklist is missing/empty but log exists
+            weight = 1;
+         }
+      }
+
+      if (weight > 0) {
+        log.performedBy.forEach(pid => counts[pid] = (counts[pid] || 0) + weight);
       }
     });
 
@@ -191,7 +201,7 @@ const GenericHistoryView: React.FC<GenericHistoryViewProps> = ({
 
             <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 px-3 py-2 rounded-lg">
-                   총 {filteredLogs.length}건
+                   총 {filteredLogs.length}건 (항목 합계)
                 </span>
                 <button 
                   onClick={() => {
@@ -261,7 +271,7 @@ const GenericHistoryView: React.FC<GenericHistoryViewProps> = ({
          <div className="w-full md:w-72 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 p-4 overflow-y-auto custom-scrollbar shrink-0 h-48 md:h-full">
             <div className="flex items-center gap-2 mb-4">
                <BarChart3 size={16} className="text-blue-500" />
-               <h3 className="font-bold text-slate-700 dark:text-slate-200 text-sm">통계 랭킹</h3>
+               <h3 className="font-bold text-slate-700 dark:text-slate-200 text-sm">항목별 수행 랭킹</h3>
             </div>
             
             {stats.length === 0 ? (

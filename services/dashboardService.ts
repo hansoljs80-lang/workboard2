@@ -32,17 +32,39 @@ export const fetchDashboardStats = async (start: Date, end: Date): Promise<Dashb
     const laundryLogs = laundryRes.data || [];
     const crLogs = crRes.data || [];
 
-    // Aggregate Staff Performance
+    // Aggregate Staff Performance (Updated to sum Checkbox Items for complex logs)
     const staffPerf: Record<string, number> = {};
-    const countStaff = (ids: string[]) => ids.forEach(id => staffPerf[id] = (staffPerf[id] || 0) + 1);
+    
+    // Helper to add score to staff
+    const addScore = (ids: string[], score: number) => {
+        ids.forEach(id => staffPerf[id] = (staffPerf[id] || 0) + score);
+    };
 
-    ptLogs.forEach(l => countStaff(l.performedBy));
-    swLogs.forEach(l => countStaff(l.performedBy));
-    bedLogs.forEach(l => countStaff(l.performedBy));
-    laundryLogs.forEach(l => countStaff(l.performedBy));
-    crLogs.forEach(l => countStaff(l.performedBy));
+    // 1. PT Room: Count checked items
+    ptLogs.forEach(l => {
+        const score = l.checklist ? l.checklist.filter((i: any) => i.checked).length : 1;
+        addScore(l.performedBy, score > 0 ? score : 1);
+    });
 
-    // Aggregate Activity by Date
+    // 2. Shockwave: Count checked items
+    swLogs.forEach(l => {
+        const score = l.checklist ? l.checklist.filter((i: any) => i.checked).length : 1;
+        addScore(l.performedBy, score > 0 ? score : 1);
+    });
+
+    // 3. Changing Room: Count checked items
+    crLogs.forEach(l => {
+        const score = l.checklist ? l.checklist.filter((i: any) => i.checked).length : 1;
+        addScore(l.performedBy, score > 0 ? score : 1);
+    });
+
+    // 4. Bed: 1 Log = 1 Count
+    bedLogs.forEach(l => addScore(l.performedBy, 1));
+
+    // 5. Laundry: 1 Log = 1 Count
+    laundryLogs.forEach(l => addScore(l.performedBy, 1));
+
+    // Aggregate Activity by Date (Remain as submission count or item count? Usually activity = submission count)
     const activityDate: Record<string, number> = {};
     const countDate = (dateStr: string) => {
         const d = new Date(dateStr).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' });

@@ -52,8 +52,16 @@ export const useBedData = (settings: Record<string, any>, tasks: Task[], onRefre
       const today = new Date().toISOString();
       const bedName = beds.find(b => b.id === bedId)?.name || `${bedId}번 베드`;
       
-      // 3.0 Insert Log to History Table (Fire and Forget)
-      logBedChange(bedId, bedName, staffIds).catch(e => console.error("Log failed", e));
+      // 3.0 Insert Log to History Table (Await execution)
+      const logRes = await logBedChange(bedId, bedName, staffIds);
+      
+      if (!logRes.success) {
+         console.error("Log failed:", logRes.message);
+         // If table missing, warn user but allow state update to proceed so the counter resets
+         if (logRes.message?.includes('does not exist')) {
+             alert("이력 저장 실패: 'bed_logs' 테이블이 없습니다.\n설정 > DB 연결 > SQL 코드 복사 후 Supabase SQL Editor에서 실행해주세요.\n(카운트다운은 정상적으로 초기화됩니다)");
+         }
+      }
 
       const updatedBeds = beds.map(b => 
         b.id === bedId ? { ...b, lastChanged: today, lastChangedBy: staffIds } : b
