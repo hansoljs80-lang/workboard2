@@ -12,7 +12,9 @@ export enum Tab {
   BEDS = 'beds',           // 3. 배드 커버 관리
   LAUNDRY = 'laundry',     // 4. 세탁 관리
   CHANGING_ROOM = 'changing_room', // 5. 탈의실 관리
-  BOARD = 'board',         // 6. 통계 대시보드 (구 업무보드)
+  CONSUMABLES = 'consumables', // 6. 소모품 관리
+  EQUIPMENT = 'equipment', // 7. 장비 관리 (New)
+  BOARD = 'board',         // 8. 통계 대시보드
   STAFF = 'staff',
   SETTINGS = 'settings',
   GENERAL_SETTINGS = 'general_settings'
@@ -71,6 +73,33 @@ export interface AppData {
   staff: Staff[];
   templates: Template[];
   settings?: Record<string, any>;
+}
+
+// --- Consumables Types ---
+
+export interface Consumable {
+  id: string;
+  name: string;
+  category?: string;
+  count: number;
+  unit: string;
+  vendorName?: string;
+  vendorPhone?: string;
+  note?: string;
+  updatedAt: string;
+}
+
+// --- Equipment Types (New) ---
+
+export interface Equipment {
+  id: string;
+  name: string;
+  category?: string; // e.g. '치료기기', '운동기구', 'PC/가전'
+  count: number;
+  vendorName?: string;
+  vendorPhone?: string;
+  note?: string; // e.g. AS 번호, 모델명, 구매일
+  updatedAt: string;
 }
 
 // --- Bed Manager Types ---

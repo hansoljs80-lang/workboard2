@@ -1,6 +1,6 @@
 
 export const SUPABASE_SCHEMA_SQL = `
--- 물리치료실 업무 보드 Supabase 초기화 스크립트 (v16 - Fix Schema Cache & Missing Columns)
+-- 물리치료실 업무 보드 Supabase 초기화 스크립트 (v18 - Add Equipments Table)
 -- Supabase 대시보드 > SQL Editor에 복사하여 실행하세요.
 
 -- 1. UUID 확장 기능 활성화 (필수)
@@ -100,7 +100,34 @@ create table if not exists public.changing_room_logs (
     created_at timestamptz default now()
 );
 
--- 11. 인덱스 설정 (성능 최적화)
+-- 11. CONSUMABLES (소모품 관리) 테이블
+create table if not exists public.consumables (
+    id text default uuid_generate_v4()::text primary key,
+    name text not null,
+    category text,
+    count integer default 0,
+    unit text default '개',
+    vendor_name text,
+    vendor_phone text,
+    note text,
+    created_at timestamptz default now(),
+    updated_at timestamptz default now()
+);
+
+-- 12. EQUIPMENTS (장비 관리) 테이블 (New)
+create table if not exists public.equipments (
+    id text default uuid_generate_v4()::text primary key,
+    name text not null,
+    category text,
+    count integer default 1,
+    vendor_name text,
+    vendor_phone text,
+    note text,
+    created_at timestamptz default now(),
+    updated_at timestamptz default now()
+);
+
+-- 13. 인덱스 설정 (성능 최적화)
 alter table public.tasks drop constraint if exists fk_tasks_template;
 alter table public.tasks add constraint fk_tasks_template foreign key (source_template_id) references public.templates(id) on delete set null;
 
@@ -110,13 +137,15 @@ create index if not exists idx_laundry_logs_created_at on public.laundry_logs(cr
 create index if not exists idx_shockwave_logs_created_at on public.shockwave_logs(created_at);
 create index if not exists idx_pt_room_logs_created_at on public.pt_room_logs(created_at);
 create index if not exists idx_changing_room_logs_created_at on public.changing_room_logs(created_at);
+create index if not exists idx_consumables_category on public.consumables(category);
+create index if not exists idx_equipments_category on public.equipments(category);
 
--- 12. 초기 관리자 계정 생성
+-- 14. 초기 관리자 계정 생성
 insert into public.staff (name, role, color, is_active)
 select '관리자', '실장', '#EF4444', true
 where not exists (select 1 from public.staff);
 
--- 13. RLS 및 권한 설정 (핵심: 익명 사용자 쓰기 허용)
+-- 15. RLS 및 권한 설정 (핵심: 익명 사용자 쓰기 허용)
 alter table public.staff enable row level security;
 alter table public.templates enable row level security;
 alter table public.tasks enable row level security;
@@ -126,6 +155,8 @@ alter table public.laundry_logs enable row level security;
 alter table public.shockwave_logs enable row level security;
 alter table public.pt_room_logs enable row level security;
 alter table public.changing_room_logs enable row level security;
+alter table public.consumables enable row level security;
+alter table public.equipments enable row level security;
 
 -- 기존 정책 삭제 (중복 방지)
 drop policy if exists "Enable all access for all users" on public.staff;
@@ -137,6 +168,8 @@ drop policy if exists "Enable all access for all users" on public.laundry_logs;
 drop policy if exists "Enable all access for all users" on public.shockwave_logs;
 drop policy if exists "Enable all access for all users" on public.pt_room_logs;
 drop policy if exists "Enable all access for all users" on public.changing_room_logs;
+drop policy if exists "Enable all access for all users" on public.consumables;
+drop policy if exists "Enable all access for all users" on public.equipments;
 
 -- 새 정책 생성
 create policy "Enable all access for all users" on public.staff for all using (true) with check (true);
@@ -148,6 +181,8 @@ create policy "Enable all access for all users" on public.laundry_logs for all u
 create policy "Enable all access for all users" on public.shockwave_logs for all using (true) with check (true);
 create policy "Enable all access for all users" on public.pt_room_logs for all using (true) with check (true);
 create policy "Enable all access for all users" on public.changing_room_logs for all using (true) with check (true);
+create policy "Enable all access for all users" on public.consumables for all using (true) with check (true);
+create policy "Enable all access for all users" on public.equipments for all using (true) with check (true);
 
 -- 권한 부여 (Permission Grant)
 grant all on table public.staff to anon, authenticated, service_role;
@@ -159,6 +194,8 @@ grant all on table public.laundry_logs to anon, authenticated, service_role;
 grant all on table public.shockwave_logs to anon, authenticated, service_role;
 grant all on table public.pt_room_logs to anon, authenticated, service_role;
 grant all on table public.changing_room_logs to anon, authenticated, service_role;
+grant all on table public.consumables to anon, authenticated, service_role;
+grant all on table public.equipments to anon, authenticated, service_role;
 
 -- [Fix] Force Schema Cache Reload (Supabase/PostgREST)
 NOTIFY pgrst, 'reload schema';

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Staff, PtRoomShift, PtRoomLog, PtRoomChecklistItem, PtRoomConfig, PtPeriodicItem } from '../types';
-import { Stethoscope, Sun, Clock, LayoutGrid, History, Settings, CalendarRange, AlertCircle, Copy, Moon, RefreshCw } from 'lucide-react';
+import { Stethoscope, Sun, Clock, LayoutGrid, History, Settings, CalendarRange, AlertCircle, Copy, Moon, RefreshCw, Plus } from 'lucide-react';
 import StatusOverlay, { OperationStatus } from './StatusOverlay';
 import StaffSelectionModal from './common/StaffSelectionModal';
 import { fetchPtRoomLogs, logPtRoomAction, getPtRoomConfig, savePtRoomConfig, updatePeriodicItemDate } from '../services/ptRoomService';
@@ -129,9 +129,32 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
 
   const handleUpdateCatalog = async (shift: PtRoomShift, newItems: {id: string, label: string}[]) => {
       const newConfig = { ...config };
-      if (shift === 'MORNING') newConfig.morningItems = newItems;
-      else if (shift === 'DAILY') newConfig.dailyItems = newItems;
-      else if (shift === 'EVENING') newConfig.eveningItems = newItems;
+      if (shift === 'MORNING') {
+        newConfig.morningItems = newItems;
+      } else if (shift === 'DAILY') {
+        newConfig.dailyItems = newItems;
+      } else if (shift === 'EVENING') {
+        newConfig.eveningItems = newItems;
+      } else if (shift === 'PERIODIC') {
+        // Special handling for periodic items to preserve interval/history
+        const updatedPeriodicItems: PtPeriodicItem[] = newItems.map(newItem => {
+          const existing = config.periodicItems.find(p => p.id === newItem.id);
+          if (existing) {
+            // Update label, keep interval & history
+            return { ...existing, label: newItem.label };
+          } else {
+            // New item, default interval 30
+            return { 
+              id: newItem.id, 
+              label: newItem.label, 
+              interval: 30, 
+              lastCompleted: undefined 
+            };
+          }
+        });
+        newConfig.periodicItems = updatedPeriodicItems;
+      }
+      
       setConfig(newConfig);
       await savePtRoomConfig(newConfig);
   };
@@ -164,7 +187,11 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
 
   const handleItemsSelected = (items: {id: string, label: string}[]) => {
     if (addModeShift && items.length > 0) {
-        setPendingAddItems({ shift: addModeShift, items });
+        // Periodic items are added to config directly via handleUpdateCatalog callback in ItemSelectorModal.
+        // For other shifts, we add them to the runtime list here.
+        if (addModeShift !== 'PERIODIC') {
+            setPendingAddItems({ shift: addModeShift, items });
+        }
         setAddModeShift(null);
     } else {
         setAddModeShift(null);
@@ -276,15 +303,24 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
   const renderPeriodicList = () => {
     const sortedItems = [...config.periodicItems].sort((a, b) => calculateStatus(a).diff - calculateStatus(b).diff);
     return (
-      <div className="flex flex-col h-auto min-h-[500px] rounded-2xl border-2 border-purple-100 dark:border-purple-900/30 bg-purple-50/30 dark:bg-purple-900/10 overflow-hidden">
+      <div className="flex flex-col h-full rounded-2xl border-2 border-purple-100 dark:border-purple-900/30 bg-purple-50/30 dark:bg-purple-900/10 overflow-hidden">
          <div className="p-4 border-b border-purple-100 dark:border-purple-900/30 bg-purple-50/50 dark:bg-purple-900/20 flex justify-between items-center">
             <div className="flex items-center gap-2 text-purple-700 dark:text-purple-300 font-bold">
                <CalendarRange size={20} />
                <span>정기 점검 항목</span>
             </div>
-            <span className="text-xs font-bold text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/50 px-2 py-1 rounded-full">
-               총 {sortedItems.length}개
-            </span>
+            <div className="flex items-center gap-2">
+                <button 
+                    onClick={() => handleAddItemClick('PERIODIC')}
+                    className="p-1 rounded-full bg-purple-100 dark:bg-purple-800 hover:bg-purple-200 dark:hover:bg-purple-700 text-purple-600 dark:text-purple-300 transition-colors"
+                    title="항목 추가"
+                >
+                    <Plus size={14} />
+                </button>
+                <span className="text-xs font-bold text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/50 px-2 py-1 rounded-full">
+                총 {sortedItems.length}개
+                </span>
+            </div>
          </div>
          <div className="flex-1 p-4 overflow-y-auto custom-scrollbar space-y-3">
             {sortedItems.map(item => {
@@ -317,6 +353,12 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
                   </div>
                );
             })}
+            {sortedItems.length === 0 && (
+                <div className="flex flex-col items-center justify-center h-full text-slate-400 text-xs opacity-60 gap-2">
+                    <span>등록된 정기 업무가 없습니다.</span>
+                    <button onClick={() => handleAddItemClick('PERIODIC')} className="text-purple-500 font-bold hover:underline">항목 추가하기</button>
+                </div>
+            )}
          </div>
       </div>
     );
@@ -467,7 +509,8 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
         items={
             addModeShift === 'MORNING' ? config.morningItems : 
             addModeShift === 'DAILY' ? config.dailyItems : 
-            config.eveningItems
+            addModeShift === 'EVENING' ? config.eveningItems :
+            config.periodicItems.map(i => ({ id: i.id, label: i.label }))
         }
         onConfirm={handleItemsSelected}
         onUpdateCatalog={(newItems) => addModeShift && handleUpdateCatalog(addModeShift, newItems)}

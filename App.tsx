@@ -10,6 +10,8 @@ import LaundryManager from './components/LaundryManager';
 import ShockwaveManager from './components/ShockwaveManager'; 
 import PtRoomManager from './components/PtRoomManager'; 
 import ChangingRoomManager from './components/ChangingRoomManager';
+import ConsumablesManager from './components/ConsumablesManager';
+import EquipmentManager from './components/EquipmentManager';
 import Layout from './components/Layout';
 import { useAppData } from './hooks/useAppData';
 import { Tab } from './types';
@@ -77,6 +79,14 @@ const App: React.FC = () => {
       case Tab.CHANGING_ROOM:
         return (
           <ChangingRoomManager staff={staff} />
+        );
+      case Tab.CONSUMABLES:
+        return (
+          <ConsumablesManager />
+        );
+      case Tab.EQUIPMENT:
+        return (
+          <EquipmentManager />
         );
       case Tab.BOARD:
         // Changed: Board is now the Statistics Dashboard
