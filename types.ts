@@ -127,6 +127,7 @@ export interface ShockwaveChecklistItem {
   id: string;
   label: string;
   checked: boolean;
+  performedBy?: string; // Optional: Store name of performer for ad-hoc items
 }
 
 export interface ShockwaveLog {
@@ -151,6 +152,7 @@ export interface PtRoomChecklistItem {
   id: string;
   label: string;
   checked: boolean;
+  performedBy?: string; // Optional: Store name of performer for ad-hoc items
 }
 
 export interface PtPeriodicItem {
@@ -183,6 +185,7 @@ export interface ChangingRoomChecklistItem {
   id: string;
   label: string;
   checked: boolean;
+  performedBy?: string; // Optional: Store name of performer for ad-hoc items
 }
 
 export interface ChangingRoomLog {

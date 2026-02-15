@@ -127,7 +127,8 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
                 id: item.id || `restored_${shift}_${idx}_${Date.now()}`,
                 label: item.label,
                 checked: item.checked,
-                originalId: item.id
+                originalId: item.id,
+                performedBy: item.performedBy // Restore performer info if exists
             }));
             setList(restored);
         } else {
@@ -210,7 +211,7 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
     }
   };
 
-  // 4. Staff Selected for Add -> Add Checked & Save
+  // 4. Staff Selected for Add -> Add Checked & Save with Performer
   const handleConfirmAddWithStaff = async (staffIds: string[]) => {
     if (!pendingAddItems) return;
 
@@ -219,12 +220,16 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
 
     const { shift, items } = pendingAddItems;
     
-    // Create items (checked = true)
+    // Resolve performer names
+    const performerNames = staffIds.map(id => staff.find(s => s.id === id)?.name).filter(Boolean).join(', ');
+
+    // Create items (checked = true) with performer info
     const newRuntimeItems: RuntimeChecklistItem[] = items.map(i => ({
         id: `added_${shift}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         label: i.label,
         checked: true,
-        originalId: i.id
+        originalId: i.id,
+        performedBy: performerNames || undefined // Attach performer info
     }));
 
     // Merge
@@ -242,7 +247,8 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
     const checklistData: ShockwaveChecklistItem[] = updatedList.map(item => ({
       id: item.id,
       label: item.label,
-      checked: item.checked
+      checked: item.checked,
+      performedBy: item.performedBy // Save to DB
     }));
 
     const res = await logShockwaveAction(shift, checklistData, staffIds);
@@ -272,7 +278,8 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
     const checklistData: ShockwaveChecklistItem[] = currentList.map(item => ({
       id: item.id,
       label: item.label,
-      checked: item.checked
+      checked: item.checked,
+      performedBy: item.performedBy // Persist existing performers
     }));
 
     const res = await logShockwaveAction(confirmingShift, checklistData, staffIds);

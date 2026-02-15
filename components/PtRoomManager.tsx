@@ -127,7 +127,8 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
                 id: item.id || `restored_${shift}_${idx}_${Date.now()}`,
                 label: item.label,
                 checked: item.checked,
-                originalId: item.id
+                originalId: item.id,
+                performedBy: item.performedBy // Restore performer
             }));
             setList(restored);
         } else {
@@ -198,7 +199,7 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
     }
   };
 
-  // 4. Confirm Staff for New Items -> Add as Checked & Save
+  // 4. Confirm Staff for New Items -> Add as Checked & Save with Performer
   const handleConfirmAddWithStaff = async (staffIds: string[]) => {
     if (!pendingAddItems) return;
 
@@ -207,12 +208,16 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
 
     const { shift, items } = pendingAddItems;
     
-    // Create new runtime items (Checked = true)
+    // Resolve performer names
+    const performerNames = staffIds.map(id => staff.find(s => s.id === id)?.name).filter(Boolean).join(', ');
+
+    // Create new runtime items (Checked = true) with performer info
     const newRuntimeItems: RuntimeChecklistItem[] = items.map(i => ({
         id: `added_${shift}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         label: i.label,
         checked: true, // Auto-check
-        originalId: i.id
+        originalId: i.id,
+        performedBy: performerNames || undefined
     }));
 
     // Merge with current list
@@ -232,7 +237,8 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
     const checklistData: PtRoomChecklistItem[] = updatedList.map(item => ({
       id: item.id, 
       label: item.label,
-      checked: item.checked
+      checked: item.checked,
+      performedBy: item.performedBy // Persist to DB
     }));
 
     // Save to DB
@@ -269,10 +275,14 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
        const targetItem = config.periodicItems.find(i => i.id === selectedPeriodicId);
        if (!targetItem) return;
 
+       // Resolve performer names for periodic item
+       const performerNames = staffIds.map(id => staff.find(s => s.id === id)?.name).filter(Boolean).join(', ');
+
        const checklistData: PtRoomChecklistItem[] = [{
          id: targetItem.id,
          label: `${targetItem.label} (정기)`,
-         checked: true
+         checked: true,
+         performedBy: performerNames || undefined
        }];
        await logPtRoomAction('PERIODIC', checklistData, staffIds);
        await updatePeriodicItemDate(selectedPeriodicId, new Date().toISOString());
@@ -291,7 +301,8 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
     const checklistData: PtRoomChecklistItem[] = currentList.map(item => ({
       id: item.id, 
       label: item.label,
-      checked: item.checked
+      checked: item.checked,
+      performedBy: item.performedBy // Keep existing performers
     }));
 
     const res = await logPtRoomAction(confirmingShift, checklistData, staffIds);

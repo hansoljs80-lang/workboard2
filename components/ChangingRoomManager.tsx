@@ -1,7 +1,7 @@
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Staff, ChangingRoomShift, ChangingRoomLog, ChangingRoomChecklistItem, ChangingRoomConfig } from '../types';
-import { DoorOpen, Sun, Coffee, Eye, LayoutGrid, History, Settings, AlertCircle, Copy } from 'lucide-react';
+import { DoorOpen, Sun, Coffee, Eye, LayoutGrid, History, Settings, AlertCircle, Copy, Clock, Plus } from 'lucide-react';
 import StatusOverlay, { OperationStatus } from './StatusOverlay';
 import StaffSelectionModal from './common/StaffSelectionModal';
 import { fetchChangingRoomLogs, logChangingRoomAction, getChangingRoomConfig, saveChangingRoomConfig } from '../services/changingRoomService';
@@ -86,7 +86,7 @@ const ChangingRoomManager: React.FC<ChangingRoomManagerProps> = ({ staff }) => {
     loadTodayLogs();
   }, [loadTodayLogs]);
 
-  // Init Lists (CHANGED: Default empty if no log)
+  // Init Lists
   useEffect(() => {
     if (activeTab !== 'status') return;
 
@@ -100,7 +100,8 @@ const ChangingRoomManager: React.FC<ChangingRoomManagerProps> = ({ staff }) => {
                 id: item.id || `restored_${shift}_${idx}_${Date.now()}`,
                 label: item.label,
                 checked: item.checked,
-                originalId: item.id
+                originalId: item.id,
+                performedBy: item.performedBy // Restore performer
             }));
             setList(restored);
         } else {
@@ -170,7 +171,7 @@ const ChangingRoomManager: React.FC<ChangingRoomManagerProps> = ({ staff }) => {
     }
   };
 
-  // 4. Confirm Staff for New Items -> Add as Checked & Save
+  // 4. Confirm Staff for New Items -> Add as Checked & Save with Performer
   const handleConfirmAddWithStaff = async (staffIds: string[]) => {
     if (!pendingAddItems) return;
 
@@ -179,12 +180,16 @@ const ChangingRoomManager: React.FC<ChangingRoomManagerProps> = ({ staff }) => {
 
     const { shift, items } = pendingAddItems;
     
-    // Create new runtime items (Checked = true)
+    // Resolve performer names
+    const performerNames = staffIds.map(id => staff.find(s => s.id === id)?.name).filter(Boolean).join(', ');
+
+    // Create new runtime items (Checked = true) with performer info
     const newRuntimeItems: RuntimeChecklistItem[] = items.map(i => ({
         id: `added_${shift}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         label: i.label,
         checked: true, // Auto-check
-        originalId: i.id
+        originalId: i.id,
+        performedBy: performerNames || undefined
     }));
 
     // Merge with current list
@@ -204,7 +209,8 @@ const ChangingRoomManager: React.FC<ChangingRoomManagerProps> = ({ staff }) => {
     const checklistData: ChangingRoomChecklistItem[] = updatedList.map(item => ({
       id: item.id, 
       label: item.label,
-      checked: item.checked
+      checked: item.checked,
+      performedBy: item.performedBy // Persist to DB
     }));
 
     // Save to DB
@@ -235,7 +241,8 @@ const ChangingRoomManager: React.FC<ChangingRoomManagerProps> = ({ staff }) => {
     const checklistData: ChangingRoomChecklistItem[] = currentList.map(item => ({
       id: item.id, 
       label: item.label,
-      checked: item.checked
+      checked: item.checked,
+      performedBy: item.performedBy // Keep existing performers
     }));
 
     const res = await logChangingRoomAction(confirmingShift, checklistData, staffIds);
@@ -258,63 +265,8 @@ const ChangingRoomManager: React.FC<ChangingRoomManagerProps> = ({ staff }) => {
     alert("SQL 코드가 클립보드에 복사되었습니다.");
   };
 
-  const getLogsForShift = (shift: ChangingRoomShift) => {
-    return todayLogs
-      .filter(l => l.shiftType === shift)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  };
-
-  // Card Components
-  const morningCard = (
-    <ChecklistCard
-      shift="MORNING"
-      title="아침 점검"
-      icon={<Sun className="text-amber-500" />}
-      items={morningList}
-      onToggleCheck={(id) => toggleCheck('MORNING', id)}
-      onSave={() => handleSaveClick('MORNING')}
-      onAdd={() => handleAddItemClick('MORNING')}
-      onDelete={(id) => deleteItemFromShift('MORNING', id)}
-      theme="border-amber-200 dark:border-amber-800"
-      todayLogs={getLogsForShift('MORNING')}
-      staff={staff}
-    />
-  );
-
-  const lunchCard = (
-    <ChecklistCard
-      shift="LUNCH"
-      title="점심 점검"
-      icon={<Coffee className="text-orange-500" />}
-      items={lunchList}
-      onToggleCheck={(id) => toggleCheck('LUNCH', id)}
-      onSave={() => handleSaveClick('LUNCH')}
-      onAdd={() => handleAddItemClick('LUNCH')}
-      onDelete={(id) => deleteItemFromShift('LUNCH', id)}
-      theme="border-orange-200 dark:border-orange-800"
-      todayLogs={getLogsForShift('LUNCH')}
-      staff={staff}
-    />
-  );
-
-  const adhocCard = (
-    <ChecklistCard
-      shift="ADHOC"
-      title="수시 점검"
-      icon={<Eye className="text-teal-500" />}
-      items={adhocList}
-      onToggleCheck={(id) => toggleCheck('ADHOC', id)}
-      onSave={() => handleSaveClick('ADHOC')}
-      onAdd={() => handleAddItemClick('ADHOC')}
-      onDelete={(id) => deleteItemFromShift('ADHOC', id)}
-      theme="border-teal-200 dark:border-teal-800"
-      todayLogs={getLogsForShift('ADHOC')}
-      staff={staff}
-    />
-  );
-
   return (
-    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 p-4 md:p-6 pb-24 overflow-hidden">
+    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 p-4 md:p-6 pb-6 overflow-hidden">
       <StatusOverlay status={opStatus} message={opMessage} />
 
       {/* Header */}
@@ -342,6 +294,7 @@ const ChangingRoomManager: React.FC<ChangingRoomManagerProps> = ({ staff }) => {
         </div>
       </div>
 
+      {/* Content */}
       {activeTab === 'status' ? (
         <div className="flex-1 overflow-hidden flex flex-col">
            {error === 'DATA_TABLE_MISSING' && (
@@ -361,52 +314,75 @@ const ChangingRoomManager: React.FC<ChangingRoomManagerProps> = ({ staff }) => {
              ]}
            />
 
-           <div className="md:hidden flex-1 overflow-y-auto pb-4 custom-scrollbar">
-              {mobileSubTab === 'MORNING' && morningCard}
-              {mobileSubTab === 'LUNCH' && lunchCard}
-              {mobileSubTab === 'ADHOC' && adhocCard}
-           </div>
-
-           <div className="hidden md:grid md:grid-cols-3 gap-4 h-full overflow-y-auto pb-4 custom-scrollbar">
-              {morningCard}
-              {lunchCard}
-              {adhocCard}
+           <div className="flex-1 overflow-y-auto pb-4 custom-scrollbar">
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full">
+               <div className={`${mobileSubTab === 'MORNING' ? 'block' : 'hidden md:block'} h-full`}>
+                 <ChecklistCard 
+                   shift="MORNING"
+                   title="아침 점검"
+                   icon={<Sun className="text-amber-500" />}
+                   items={morningList}
+                   onToggleCheck={(id) => toggleCheck('MORNING', id)}
+                   onSave={() => handleSaveClick('MORNING')}
+                   onAdd={() => handleAddItemClick('MORNING')}
+                   onDelete={(id) => deleteItemFromShift('MORNING', id)}
+                   theme="border-amber-200 dark:border-amber-800"
+                   staff={staff}
+                   todayLogs={todayLogs.filter(l => l.shiftType === 'MORNING')}
+                 />
+               </div>
+               <div className={`${mobileSubTab === 'LUNCH' ? 'block' : 'hidden md:block'} h-full`}>
+                 <ChecklistCard 
+                   shift="LUNCH"
+                   title="점심 점검"
+                   icon={<Coffee className="text-orange-500" />}
+                   items={lunchList}
+                   onToggleCheck={(id) => toggleCheck('LUNCH', id)}
+                   onSave={() => handleSaveClick('LUNCH')}
+                   onAdd={() => handleAddItemClick('LUNCH')}
+                   onDelete={(id) => deleteItemFromShift('LUNCH', id)}
+                   theme="border-orange-200 dark:border-orange-800"
+                   staff={staff}
+                   todayLogs={todayLogs.filter(l => l.shiftType === 'LUNCH')}
+                 />
+               </div>
+               <div className={`${mobileSubTab === 'ADHOC' ? 'block' : 'hidden md:block'} h-full`}>
+                 <ChecklistCard 
+                   shift="ADHOC"
+                   title="수시 점검"
+                   icon={<Eye className="text-teal-500" />}
+                   items={adhocList}
+                   onToggleCheck={(id) => toggleCheck('ADHOC', id)}
+                   onSave={() => handleSaveClick('ADHOC')}
+                   onAdd={() => handleAddItemClick('ADHOC')}
+                   onDelete={(id) => deleteItemFromShift('ADHOC', id)}
+                   theme="border-teal-200 dark:border-teal-800"
+                   staff={staff}
+                   todayLogs={todayLogs.filter(l => l.shiftType === 'ADHOC')}
+                 />
+               </div>
+             </div>
            </div>
         </div>
       ) : (
-        <ChangingRoomHistory staff={staff} />
+        <div className="flex-1 overflow-hidden flex flex-col md:flex-row gap-4 animate-fade-in">
+           {/* History View */}
+           <ChangingRoomHistory staff={staff} />
+        </div>
       )}
 
-      {/* Staff Selection Manual Save */}
+      {/* 1. Modal for Saving existing list (Manual Save) */}
       <StaffSelectionModal
         isOpen={confirmingShift !== null}
         onClose={() => setConfirmingShift(null)}
         onConfirm={handleConfirmSave}
         staff={staff}
         title="점검 완료"
+        message="작업을 수행한 직원을 선택해주세요."
         confirmLabel="저장 완료"
       />
 
-      {/* Staff Selection for Add Item (Immediate) */}
-      <StaffSelectionModal
-        isOpen={!!pendingAddItems}
-        onClose={() => setPendingAddItems(null)}
-        onConfirm={handleConfirmAddWithStaff}
-        staff={staff}
-        title="수행 직원 선택"
-        message="추가한 항목을 수행한 직원을 선택하세요. (즉시 저장됨)"
-        confirmLabel="추가 및 저장"
-      />
-
-      {isConfigOpen && (
-        <ChangingRoomConfigModal 
-          config={config} 
-          onClose={() => setIsConfigOpen(false)}
-          onSave={handleSaveConfig}
-        />
-      )}
-
-      {/* Add Item Modal with CRUD */}
+      {/* 2. Modal for Adding New Item (Config + Selection) */}
       <ItemSelectorModal
         isOpen={addModeShift !== null}
         onClose={() => setAddModeShift(null)}
@@ -419,6 +395,26 @@ const ChangingRoomManager: React.FC<ChangingRoomManagerProps> = ({ staff }) => {
         onConfirm={handleItemsSelected}
         onUpdateCatalog={(newItems) => addModeShift && handleUpdateCatalog(addModeShift, newItems)}
       />
+
+      {/* 3. Modal for Staff Select AFTER Item Add (Immediate Save) */}
+      <StaffSelectionModal
+        isOpen={!!pendingAddItems}
+        onClose={() => setPendingAddItems(null)}
+        onConfirm={handleConfirmAddWithStaff}
+        staff={staff}
+        title="수행 직원 선택"
+        message="추가한 항목을 수행한 직원을 선택하세요. (즉시 저장됨)"
+        confirmLabel="추가 및 저장"
+      />
+
+      {/* Config Modal */}
+      {isConfigOpen && (
+        <ChangingRoomConfigModal 
+          config={config} 
+          onClose={() => setIsConfigOpen(false)}
+          onSave={handleSaveConfig}
+        />
+      )}
     </div>
   );
 };

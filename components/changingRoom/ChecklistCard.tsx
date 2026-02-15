@@ -117,9 +117,16 @@ const ChecklistCard: React.FC<ChecklistCardProps> = ({
                       <div className={`mt-0.5 shrink-0 transition-colors ${item.checked ? 'text-blue-500' : 'text-slate-300 dark:text-slate-600'}`}>
                           {item.checked ? <CheckSquare size={20} /> : <Square size={20} />}
                       </div>
-                      <span className={`text-sm font-medium transition-all ${item.checked ? 'text-slate-700 dark:text-slate-200' : 'text-slate-500 dark:text-slate-400'}`}>
-                          {item.label}
-                      </span>
+                      <div className="flex flex-col items-start min-w-0">
+                        <span className={`text-sm font-medium transition-all ${item.checked ? 'text-slate-700 dark:text-slate-200' : 'text-slate-500 dark:text-slate-400'}`}>
+                            {item.label}
+                        </span>
+                        {item.performedBy && (
+                           <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded-md mt-1">
+                             {item.performedBy}
+                           </span>
+                        )}
+                      </div>
                   </button>
                   
                   {/* Allow deleting even if completed (amendment) */}
