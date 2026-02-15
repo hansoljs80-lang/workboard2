@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Staff } from '../types';
-import { CheckCircle2, RefreshCw, UserPen } from 'lucide-react';
+import { CheckCircle2, RefreshCw, UserCog } from 'lucide-react';
 
 interface BedChangeModalProps {
   isOpen: boolean;
@@ -54,7 +54,7 @@ const BedChangeModal: React.FC<BedChangeModalProps> = ({
       <div className="bg-white dark:bg-slate-800 w-full max-w-sm rounded-2xl shadow-xl overflow-hidden animate-fade-in-up border border-slate-100 dark:border-slate-700">
         <div className="p-5 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-center">
           <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center mx-auto mb-3">
-            {isEditMode ? <UserPen size={24} /> : <RefreshCw size={24} />}
+            {isEditMode ? <UserCog size={24} /> : <RefreshCw size={24} />}
           </div>
           <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100">
             {isEditMode ? '수행 직원 수정' : '교체 확인'}

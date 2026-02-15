@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { BedData, Staff } from '../types';
 import { calculateBedStatus } from '../utils/bedUtils';
-import { RefreshCw, AlertTriangle, CheckCircle2, Pencil, Check, X, CalendarClock, ThumbsUp, Undo2, UserPen } from 'lucide-react';
+import { RefreshCw, AlertTriangle, CheckCircle2, Pencil, Check, X, CalendarClock, ThumbsUp, Undo2, UserCog } from 'lucide-react';
 import AvatarStack from './common/AvatarStack';
 
 interface BedCardProps {
@@ -234,7 +234,7 @@ const BedCard: React.FC<BedCardProps> = ({ bed, staff, interval, onChange, onNam
                   max={1} 
                 />
                 <div className="absolute -bottom-1 -right-1 bg-white dark:bg-slate-700 rounded-full p-0.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
-                   <UserPen size={10} className="text-blue-500" />
+                   <UserCog size={10} className="text-blue-500" />
                 </div>
              </div>
          </div>
