@@ -1,3 +1,4 @@
+
 import { getSupabase } from './supabase';
 import { LaundryLog, LaundryAction } from '../types';
 
@@ -19,6 +20,19 @@ export const logLaundryAction = async (actionType: LaundryAction, staffIds: stri
     return { success: true };
   } catch (e: any) {
     console.error("Laundry log exception:", e);
+    return { success: false, message: e.message };
+  }
+};
+
+export const deleteLaundryLog = async (id: string) => {
+  const supabase = getSupabase();
+  if (!supabase) return { success: false, message: 'DB Disconnected' };
+
+  try {
+    const { error } = await supabase.from('laundry_logs').delete().eq('id', id);
+    if (error) throw error;
+    return { success: true };
+  } catch (e: any) {
     return { success: false, message: e.message };
   }
 };

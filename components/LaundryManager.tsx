@@ -1,10 +1,10 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Staff, LaundryLog, LaundryAction } from '../types';
-import { Shirt, Wind, CheckCircle2, History, LayoutGrid, AlertCircle, Database, Waves, ArrowRight, Copy, Filter, Clock, Plus } from 'lucide-react';
+import { Shirt, Wind, CheckCircle2, History, LayoutGrid, AlertCircle, Database, Waves, ArrowRight, Copy, Filter, Clock, Plus, Trash2 } from 'lucide-react';
 import StatusOverlay, { OperationStatus } from './StatusOverlay';
 import StaffSelectionModal from './common/StaffSelectionModal';
-import { fetchLaundryLogs, logLaundryAction } from '../services/laundryService';
+import { fetchLaundryLogs, logLaundryAction, deleteLaundryLog } from '../services/laundryService';
 import DateNavigator from './DateNavigator';
 import AvatarStack from './common/AvatarStack';
 import LaundryStats from './laundry/LaundryStats';
@@ -124,6 +124,26 @@ const LaundryManager: React.FC<LaundryManagerProps> = ({ staff }) => {
     setTimeout(() => setOpStatus('idle'), 1000);
   };
 
+  const handleDeleteLog = async (id: string) => {
+    if (!window.confirm('이 기록을 삭제하시겠습니까?')) return;
+    
+    setOpStatus('loading');
+    setOpMessage('삭제 중...');
+    
+    const res = await deleteLaundryLog(id);
+    
+    if (res.success) {
+      setOpStatus('success');
+      setOpMessage('삭제 완료');
+      loadLogs();
+    } else {
+      setOpStatus('error');
+      setOpMessage('삭제 실패');
+      alert(res.message);
+    }
+    setTimeout(() => setOpStatus('idle'), 1000);
+  };
+
   // 3. Status View Helpers
   const getTodayLogs = (action: LaundryAction) => {
     // Return ALL logs for this action today, sorted by time desc
@@ -137,11 +157,12 @@ const LaundryManager: React.FC<LaundryManagerProps> = ({ staff }) => {
     const actionLogs = getTodayLogs(action);
     const hasLogs = actionLogs.length > 0;
     
+    // Changed outer element to div to avoid nesting buttons (since delete button is inside)
     return (
-      <button 
+      <div 
         onClick={() => handleStageClick(action)}
         className={`
-          relative flex flex-col items-center p-4 rounded-2xl border-2 transition-all shadow-sm hover:shadow-lg active:scale-[0.98] group overflow-hidden w-full min-h-[240px]
+          relative flex flex-col items-center p-4 rounded-2xl border-2 transition-all shadow-sm hover:shadow-lg active:scale-[0.98] group overflow-hidden w-full min-h-[240px] cursor-pointer
           ${theme}
         `}
       >
@@ -161,12 +182,24 @@ const LaundryManager: React.FC<LaundryManagerProps> = ({ staff }) => {
            {hasLogs ? (
              <div className="overflow-y-auto custom-scrollbar flex-1 max-h-[120px] p-2 space-y-1">
                 {actionLogs.map((log) => (
-                  <div key={log.id} className="bg-white/80 dark:bg-slate-800/80 p-2 rounded-lg flex items-center justify-between shadow-sm animate-fade-in text-left">
+                  <div key={log.id} className="bg-white/80 dark:bg-slate-800/80 p-2 rounded-lg flex items-center justify-between shadow-sm animate-fade-in text-left group/item">
                      <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600 dark:text-slate-300">
                         <Clock size={12} className="text-slate-400" />
                         {new Date(log.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
                      </div>
-                     <AvatarStack ids={log.performedBy} staff={staff} size="xs" max={2} />
+                     <div className="flex items-center gap-2">
+                        <AvatarStack ids={log.performedBy} staff={staff} size="xs" max={2} />
+                        <button 
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteLog(log.id);
+                            }}
+                            className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded opacity-0 group-hover/item:opacity-100 transition-opacity"
+                            title="삭제"
+                        >
+                            <Trash2 size={12} />
+                        </button>
+                     </div>
                   </div>
                 ))}
              </div>
@@ -182,7 +215,7 @@ const LaundryManager: React.FC<LaundryManagerProps> = ({ staff }) => {
               <Plus size={10} /> 터치하여 기록 추가
            </div>
         </div>
-      </button>
+      </div>
     );
   };
 
