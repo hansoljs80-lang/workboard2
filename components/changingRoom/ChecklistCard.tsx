@@ -52,7 +52,8 @@ const ChecklistCard: React.FC<ChecklistCardProps> = ({
             <div>
                <div className="flex items-center gap-2">
                  <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">{title}</h3>
-                 {onAdd && !isCompleted && (
+                 {/* Enable Add Button even if completed */}
+                 {onAdd && (
                    <button 
                      onClick={onAdd}
                      className="p-1 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 transition-colors"
@@ -97,7 +98,7 @@ const ChecklistCard: React.FC<ChecklistCardProps> = ({
             <div className="h-full flex flex-col items-center justify-center text-slate-400 text-sm gap-2 opacity-60">
                <div className="p-2 rounded-full bg-slate-100 dark:bg-slate-800"><CheckSquare size={20} /></div>
                <span>항목이 없습니다.</span>
-               {onAdd && !isCompleted && <button onClick={onAdd} className="text-blue-500 font-bold hover:underline">항목 추가하기</button>}
+               {onAdd && <button onClick={onAdd} className="text-blue-500 font-bold hover:underline">항목 추가하기</button>}
             </div>
         ) : (
             <div className="space-y-2">
@@ -121,7 +122,8 @@ const ChecklistCard: React.FC<ChecklistCardProps> = ({
                       </span>
                   </button>
                   
-                  {!isCompleted && onDelete && (
+                  {/* Allow deleting even if completed (amendment) */}
+                  {onDelete && (
                     <button 
                       onClick={() => onDelete(item.id)}
                       className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors opacity-0 group-hover:opacity-100"

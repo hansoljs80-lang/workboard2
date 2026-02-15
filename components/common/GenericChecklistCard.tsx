@@ -50,8 +50,8 @@ const GenericChecklistCard: React.FC<GenericChecklistCardProps> = ({
             <div>
                <div className="flex items-center gap-2">
                  <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">{title}</h3>
-                 {/* Add Button in Header */}
-                 {onAdd && !isCompleted && (
+                 {/* Add Button in Header - Always visible if onAdd is present */}
+                 {onAdd && (
                    <button 
                      onClick={onAdd}
                      className="p-1 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 transition-colors"
@@ -89,7 +89,7 @@ const GenericChecklistCard: React.FC<GenericChecklistCardProps> = ({
             <div className="h-full flex flex-col items-center justify-center text-slate-400 text-sm gap-2 opacity-60">
                <div className="p-2 rounded-full bg-slate-100 dark:bg-slate-800"><CheckSquare size={20} /></div>
                <span>항목이 없습니다.</span>
-               {onAdd && !isCompleted && <button onClick={onAdd} className="text-blue-500 font-bold hover:underline">항목 추가하기</button>}
+               {onAdd && <button onClick={onAdd} className="text-blue-500 font-bold hover:underline">항목 추가하기</button>}
             </div>
         ) : (
             <div className="space-y-2">
@@ -98,12 +98,12 @@ const GenericChecklistCard: React.FC<GenericChecklistCardProps> = ({
                 <div key={item.id} className="flex items-center gap-2 group">
                   <button
                       onClick={() => onToggle(item.id)}
-                      disabled={isCompleted} 
+                      // Allow toggling even if completed (to amend record)
                       className={`flex-1 flex items-start gap-3 p-3 rounded-xl border text-left transition-all active:scale-[0.98] ${
                           item.checked 
                           ? 'bg-white dark:bg-slate-800 border-blue-200 dark:border-blue-900/50 shadow-sm ring-1 ring-blue-50 dark:ring-blue-900/20' 
                           : 'bg-white/60 dark:bg-slate-800/40 border-slate-200/50 dark:border-slate-700/50 hover:bg-white dark:hover:bg-slate-800'
-                      } ${isCompleted ? 'opacity-80 cursor-default' : ''}`}
+                      }`}
                   >
                       <div className={`mt-0.5 shrink-0 transition-colors ${item.checked ? 'text-blue-500' : 'text-slate-300 dark:text-slate-600'}`}>
                           {item.checked ? <CheckSquare size={20} /> : <Square size={20} />}
@@ -113,8 +113,8 @@ const GenericChecklistCard: React.FC<GenericChecklistCardProps> = ({
                       </span>
                   </button>
                   
-                  {/* Delete Button (Only if not completed) */}
-                  {!isCompleted && onDelete && (
+                  {/* Delete Button - Allow deleting even if completed (amendment) */}
+                  {onDelete && (
                     <button 
                       onClick={() => onDelete(item.id)}
                       className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors opacity-0 group-hover:opacity-100"
