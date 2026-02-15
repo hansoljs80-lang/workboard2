@@ -35,7 +35,11 @@ const ChangingRoomManager: React.FC<ChangingRoomManagerProps> = ({ staff }) => {
   const [lunchList, setLunchList] = useState<RuntimeChecklistItem[]>([]);
   const [adhocList, setAdhocList] = useState<RuntimeChecklistItem[]>([]);
   
+  // Add Modal State
   const [addModeShift, setAddModeShift] = useState<ChangingRoomShift | null>(null);
+  const [pendingAddItems, setPendingAddItems] = useState<{shift: ChangingRoomShift, items: {id: string, label: string}[]} | null>(null);
+
+  // Save Modal State
   const [confirmingShift, setConfirmingShift] = useState<ChangingRoomShift | null>(null);
 
   // Data Logic
@@ -99,6 +103,9 @@ const ChangingRoomManager: React.FC<ChangingRoomManagerProps> = ({ staff }) => {
                 originalId: item.id
             }));
             setList(restored);
+        } else {
+            // Start Empty
+            setList([]);
         }
     };
 
@@ -132,19 +139,6 @@ const ChangingRoomManager: React.FC<ChangingRoomManagerProps> = ({ staff }) => {
     else setAdhocList(update);
   };
 
-  const addItemToShift = (shift: ChangingRoomShift, itemsToAdd: {id: string, label: string}[]) => {
-    const newItems = itemsToAdd.map(i => ({
-        id: `added_${shift}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        label: i.label,
-        checked: false,
-        originalId: i.id
-    }));
-
-    if (shift === 'MORNING') setMorningList(prev => [...prev, ...newItems]);
-    else if (shift === 'LUNCH') setLunchList(prev => [...prev, ...newItems]);
-    else setAdhocList(prev => [...prev, ...newItems]);
-  };
-
   const deleteItemFromShift = (shift: ChangingRoomShift, id: string) => {
     const filter = (prev: RuntimeChecklistItem[]) => prev.filter(item => item.id !== id);
     if (shift === 'MORNING') setMorningList(filter);
@@ -152,6 +146,7 @@ const ChangingRoomManager: React.FC<ChangingRoomManagerProps> = ({ staff }) => {
     else setAdhocList(filter);
   };
 
+  // 1. Manual Save Button
   const handleSaveClick = (shift: ChangingRoomShift) => {
     const list = shift === 'MORNING' ? morningList : shift === 'LUNCH' ? lunchList : adhocList;
     if (list.filter(i => i.checked).length === 0) {
@@ -160,6 +155,76 @@ const ChangingRoomManager: React.FC<ChangingRoomManagerProps> = ({ staff }) => {
     setConfirmingShift(shift);
   };
 
+  // 2. Add Item Click
+  const handleAddItemClick = (shift: ChangingRoomShift) => {
+    setAddModeShift(shift);
+  };
+
+  // 3. Modal Items Selected -> Go to Staff Select
+  const handleItemsSelected = (items: {id: string, label: string}[]) => {
+    if (addModeShift && items.length > 0) {
+        setPendingAddItems({ shift: addModeShift, items });
+        setAddModeShift(null); // Close item modal
+    } else {
+        setAddModeShift(null);
+    }
+  };
+
+  // 4. Confirm Staff for New Items -> Add as Checked & Save
+  const handleConfirmAddWithStaff = async (staffIds: string[]) => {
+    if (!pendingAddItems) return;
+
+    setOpStatus('loading');
+    setOpMessage('항목 추가 및 저장 중...');
+
+    const { shift, items } = pendingAddItems;
+    
+    // Create new runtime items (Checked = true)
+    const newRuntimeItems: RuntimeChecklistItem[] = items.map(i => ({
+        id: `added_${shift}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        label: i.label,
+        checked: true, // Auto-check
+        originalId: i.id
+    }));
+
+    // Merge with current list
+    let currentList: RuntimeChecklistItem[] = [];
+    if (shift === 'MORNING') currentList = morningList;
+    else if (shift === 'LUNCH') currentList = lunchList;
+    else currentList = adhocList;
+
+    const updatedList = [...currentList, ...newRuntimeItems];
+
+    // Update UI State immediately
+    if (shift === 'MORNING') setMorningList(updatedList);
+    else if (shift === 'LUNCH') setLunchList(updatedList);
+    else setAdhocList(updatedList);
+
+    // Prepare payload for DB
+    const checklistData: ChangingRoomChecklistItem[] = updatedList.map(item => ({
+      id: item.id, 
+      label: item.label,
+      checked: item.checked
+    }));
+
+    // Save to DB
+    const res = await logChangingRoomAction(shift, checklistData, staffIds);
+
+    if (res.success) {
+        setOpStatus('success');
+        setOpMessage('추가 및 완료 처리됨');
+        loadTodayLogs(); // Refresh to sync timestamp etc
+    } else {
+        setOpStatus('error');
+        setOpMessage('저장 실패');
+        alert(res.message);
+    }
+
+    setPendingAddItems(null);
+    setTimeout(() => setOpStatus('idle'), 1000);
+  };
+
+  // 5. Manual Save Confirmation
   const handleConfirmSave = async (staffIds: string[]) => {
     if (!confirmingShift) return;
 
@@ -208,7 +273,7 @@ const ChangingRoomManager: React.FC<ChangingRoomManagerProps> = ({ staff }) => {
       items={morningList}
       onToggleCheck={(id) => toggleCheck('MORNING', id)}
       onSave={() => handleSaveClick('MORNING')}
-      onAdd={() => setAddModeShift('MORNING')}
+      onAdd={() => handleAddItemClick('MORNING')}
       onDelete={(id) => deleteItemFromShift('MORNING', id)}
       theme="border-amber-200 dark:border-amber-800"
       todayLogs={getLogsForShift('MORNING')}
@@ -224,7 +289,7 @@ const ChangingRoomManager: React.FC<ChangingRoomManagerProps> = ({ staff }) => {
       items={lunchList}
       onToggleCheck={(id) => toggleCheck('LUNCH', id)}
       onSave={() => handleSaveClick('LUNCH')}
-      onAdd={() => setAddModeShift('LUNCH')}
+      onAdd={() => handleAddItemClick('LUNCH')}
       onDelete={(id) => deleteItemFromShift('LUNCH', id)}
       theme="border-orange-200 dark:border-orange-800"
       todayLogs={getLogsForShift('LUNCH')}
@@ -240,7 +305,7 @@ const ChangingRoomManager: React.FC<ChangingRoomManagerProps> = ({ staff }) => {
       items={adhocList}
       onToggleCheck={(id) => toggleCheck('ADHOC', id)}
       onSave={() => handleSaveClick('ADHOC')}
-      onAdd={() => setAddModeShift('ADHOC')}
+      onAdd={() => handleAddItemClick('ADHOC')}
       onDelete={(id) => deleteItemFromShift('ADHOC', id)}
       theme="border-teal-200 dark:border-teal-800"
       todayLogs={getLogsForShift('ADHOC')}
@@ -312,6 +377,7 @@ const ChangingRoomManager: React.FC<ChangingRoomManagerProps> = ({ staff }) => {
         <ChangingRoomHistory staff={staff} />
       )}
 
+      {/* Staff Selection Manual Save */}
       <StaffSelectionModal
         isOpen={confirmingShift !== null}
         onClose={() => setConfirmingShift(null)}
@@ -319,6 +385,17 @@ const ChangingRoomManager: React.FC<ChangingRoomManagerProps> = ({ staff }) => {
         staff={staff}
         title="점검 완료"
         confirmLabel="저장 완료"
+      />
+
+      {/* Staff Selection for Add Item (Immediate) */}
+      <StaffSelectionModal
+        isOpen={!!pendingAddItems}
+        onClose={() => setPendingAddItems(null)}
+        onConfirm={handleConfirmAddWithStaff}
+        staff={staff}
+        title="수행 직원 선택"
+        message="추가한 항목을 수행한 직원을 선택하세요. (즉시 저장됨)"
+        confirmLabel="추가 및 저장"
       />
 
       {isConfigOpen && (
@@ -339,7 +416,7 @@ const ChangingRoomManager: React.FC<ChangingRoomManagerProps> = ({ staff }) => {
             addModeShift === 'LUNCH' ? config.lunchItems : 
             config.adhocItems
         }
-        onConfirm={(items) => addModeShift && addItemToShift(addModeShift, items)}
+        onConfirm={handleItemsSelected}
         onUpdateCatalog={(newItems) => addModeShift && handleUpdateCatalog(addModeShift, newItems)}
       />
     </div>

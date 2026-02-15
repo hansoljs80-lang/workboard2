@@ -37,10 +37,11 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
   const [dailyList, setDailyList] = useState<RuntimeChecklistItem[]>([]);
   const [eveningList, setEveningList] = useState<RuntimeChecklistItem[]>([]);
   
-  // Add Modal State
+  // Add Item Flow State
   const [addModeShift, setAddModeShift] = useState<PtRoomShift | null>(null);
+  const [pendingAddItems, setPendingAddItems] = useState<{shift: PtRoomShift, items: {id: string, label: string}[]} | null>(null);
 
-  // Periodic Selection State
+  // Completion/Save Flow State
   const [selectedPeriodicId, setSelectedPeriodicId] = useState<string | null>(null);
   const [confirmingShift, setConfirmingShift] = useState<PtRoomShift | null>(null);
 
@@ -112,7 +113,7 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
     loadLogs();
   }, [loadLogs]);
 
-  // --- Initialize Runtime Lists (CHANGED: Default empty if no log) ---
+  // --- Initialize Runtime Lists ---
   useEffect(() => {
     if (activeTab !== 'status') return;
 
@@ -129,9 +130,9 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
                 originalId: item.id
             }));
             setList(restored);
-        } 
-        // Note: We DO NOT auto-fill from config if log is empty anymore.
-        // The list starts empty, allowing user to add via button.
+        } else {
+            setList([]);
+        }
     };
 
     initList('MORNING', setMorningList);
@@ -165,19 +166,6 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
     else setEveningList(update);
   };
 
-  const addItemToShift = (shift: PtRoomShift, itemsToAdd: {id: string, label: string}[]) => {
-    const newItems = itemsToAdd.map(i => ({
-        id: `added_${shift}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        label: i.label,
-        checked: false,
-        originalId: i.id
-    }));
-
-    if (shift === 'MORNING') setMorningList(prev => [...prev, ...newItems]);
-    else if (shift === 'DAILY') setDailyList(prev => [...prev, ...newItems]);
-    else setEveningList(prev => [...prev, ...newItems]);
-  };
-
   const deleteItemFromShift = (shift: PtRoomShift, id: string) => {
     const filter = (prev: RuntimeChecklistItem[]) => prev.filter(item => item.id !== id);
     if (shift === 'MORNING') setMorningList(filter);
@@ -185,6 +173,7 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
     else setEveningList(filter);
   };
 
+  // 1. Trigger Manual Save (Current State)
   const handleSaveClick = (shift: PtRoomShift) => {
     const list = shift === 'MORNING' ? morningList : shift === 'DAILY' ? dailyList : eveningList;
     const checkedCount = list.filter(i => i.checked).length;
@@ -194,11 +183,81 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
     setConfirmingShift(shift);
   };
 
+  // 2. Trigger Add Item (Opens Item Modal)
+  const handleAddItemClick = (shift: PtRoomShift) => {
+    setAddModeShift(shift);
+  };
+
+  // 3. Confirm Items from Modal -> Open Staff Select
+  const handleItemsSelected = (items: {id: string, label: string}[]) => {
+    if (addModeShift && items.length > 0) {
+        setPendingAddItems({ shift: addModeShift, items });
+        setAddModeShift(null); // Close item modal
+    } else {
+        setAddModeShift(null);
+    }
+  };
+
+  // 4. Confirm Staff for New Items -> Add as Checked & Save
+  const handleConfirmAddWithStaff = async (staffIds: string[]) => {
+    if (!pendingAddItems) return;
+
+    setOpStatus('loading');
+    setOpMessage('항목 추가 및 저장 중...');
+
+    const { shift, items } = pendingAddItems;
+    
+    // Create new runtime items (Checked = true)
+    const newRuntimeItems: RuntimeChecklistItem[] = items.map(i => ({
+        id: `added_${shift}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        label: i.label,
+        checked: true, // Auto-check
+        originalId: i.id
+    }));
+
+    // Merge with current list
+    let currentList: RuntimeChecklistItem[] = [];
+    if (shift === 'MORNING') currentList = morningList;
+    else if (shift === 'DAILY') currentList = dailyList;
+    else currentList = eveningList;
+
+    const updatedList = [...currentList, ...newRuntimeItems];
+
+    // Update UI State immediately
+    if (shift === 'MORNING') setMorningList(updatedList);
+    else if (shift === 'DAILY') setDailyList(updatedList);
+    else setEveningList(updatedList);
+
+    // Prepare payload for DB
+    const checklistData: PtRoomChecklistItem[] = updatedList.map(item => ({
+      id: item.id, 
+      label: item.label,
+      checked: item.checked
+    }));
+
+    // Save to DB
+    const res = await logPtRoomAction(shift, checklistData, staffIds);
+
+    if (res.success) {
+        setOpStatus('success');
+        setOpMessage('추가 및 완료 처리됨');
+        loadLogs(); // Refresh to sync timestamp etc
+    } else {
+        setOpStatus('error');
+        setOpMessage('저장 실패');
+        alert(res.message);
+    }
+
+    setPendingAddItems(null);
+    setTimeout(() => setOpStatus('idle'), 1000);
+  };
+
   const handlePeriodicClick = (itemId: string) => {
     setSelectedPeriodicId(itemId);
     setConfirmingShift('PERIODIC');
   };
 
+  // 5. Manual Save Confirmation
   const handleConfirmSave = async (staffIds: string[]) => {
     if (!confirmingShift) return;
 
@@ -286,7 +345,7 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
     return groups;
   }, [filteredLogs]);
 
-  // Calculate stats and leaders
+  // Stats Logic omitted for brevity (unchanged)
   const stats = useMemo(() => { 
     const counts: Record<string, number> = {};
     filteredLogs.forEach(log => {
@@ -464,7 +523,7 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
                    items={morningList}
                    onToggle={(id) => toggleCheck('MORNING', id)}
                    onSave={() => handleSaveClick('MORNING')}
-                   onAdd={() => setAddModeShift('MORNING')}
+                   onAdd={() => handleAddItemClick('MORNING')}
                    onDelete={(id) => deleteItemFromShift('MORNING', id)}
                    theme="border-amber-200 dark:border-amber-800"
                    staff={staff}
@@ -478,7 +537,7 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
                    items={dailyList}
                    onToggle={(id) => toggleCheck('DAILY', id)}
                    onSave={() => handleSaveClick('DAILY')}
-                   onAdd={() => setAddModeShift('DAILY')}
+                   onAdd={() => handleAddItemClick('DAILY')}
                    onDelete={(id) => deleteItemFromShift('DAILY', id)}
                    theme="border-blue-200 dark:border-blue-800"
                    staff={staff}
@@ -492,7 +551,7 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
                    items={eveningList}
                    onToggle={(id) => toggleCheck('EVENING', id)}
                    onSave={() => handleSaveClick('EVENING')}
-                   onAdd={() => setAddModeShift('EVENING')}
+                   onAdd={() => handleAddItemClick('EVENING')}
                    onDelete={(id) => deleteItemFromShift('EVENING', id)}
                    theme="border-indigo-200 dark:border-indigo-800"
                    staff={staff}
@@ -507,7 +566,7 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
         </div>
       ) : (
         <div className="flex-1 overflow-hidden flex flex-col md:flex-row gap-4 animate-fade-in">
-           {/* Stats would go here... (Reuse PtRoomStats) */}
+           {/* Stats */}
            <div className="w-full md:w-80 shrink-0 h-64 md:h-full order-1">
               <PtRoomStats stats={stats} shiftLeaders={shiftLeaders} loading={loading} />
            </div>
@@ -517,7 +576,6 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
                  <DateNavigator currentDate={currentDate} viewMode={viewMode} onNavigate={() => {}} />
               </div>
               <div className="space-y-6">
-                 {/* Reusing existing log render logic (omitted for brevity, assume mapped correctly) */}
                  {groupedLogs.map(g => (
                     <div key={g.date}>
                         <div className="font-bold mb-2">{g.date}</div>
@@ -531,7 +589,7 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
         </div>
       )}
 
-      {/* Staff Selection Modal */}
+      {/* 1. Modal for Saving existing list (Manual Save) */}
       <StaffSelectionModal
         isOpen={confirmingShift !== null}
         onClose={() => setConfirmingShift(null)}
@@ -542,16 +600,7 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
         confirmLabel="저장 완료"
       />
 
-      {/* Config Modal */}
-      {isConfigOpen && (
-        <PtRoomConfigModal 
-          config={config} 
-          onClose={() => setIsConfigOpen(false)}
-          onSave={handleSaveConfig}
-        />
-      )}
-
-      {/* Add Item Modal with CRUD */}
+      {/* 2. Modal for Adding New Item (Config + Selection) */}
       <ItemSelectorModal
         isOpen={addModeShift !== null}
         onClose={() => setAddModeShift(null)}
@@ -561,9 +610,29 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
             addModeShift === 'DAILY' ? config.dailyItems : 
             config.eveningItems
         }
-        onConfirm={(items) => addModeShift && addItemToShift(addModeShift, items)}
+        onConfirm={handleItemsSelected}
         onUpdateCatalog={(newItems) => addModeShift && handleUpdateCatalog(addModeShift, newItems)}
       />
+
+      {/* 3. Modal for Staff Select AFTER Item Add (Immediate Save) */}
+      <StaffSelectionModal
+        isOpen={!!pendingAddItems}
+        onClose={() => setPendingAddItems(null)}
+        onConfirm={handleConfirmAddWithStaff}
+        staff={staff}
+        title="수행 직원 선택"
+        message="추가한 항목을 수행한 직원을 선택하세요. (즉시 저장됨)"
+        confirmLabel="추가 및 저장"
+      />
+
+      {/* Config Modal */}
+      {isConfigOpen && (
+        <PtRoomConfigModal 
+          config={config} 
+          onClose={() => setIsConfigOpen(false)}
+          onSave={handleSaveConfig}
+        />
+      )}
     </div>
   );
 };

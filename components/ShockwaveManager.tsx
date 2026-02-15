@@ -40,6 +40,9 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
   
   // Add Modal State
   const [addModeShift, setAddModeShift] = useState<ShockwaveShift | null>(null);
+  const [pendingAddItems, setPendingAddItems] = useState<{shift: ShockwaveShift, items: {id: string, label: string}[]} | null>(null);
+
+  // Save Modal State
   const [confirmingShift, setConfirmingShift] = useState<ShockwaveShift | null>(null);
 
   // Data Logic
@@ -127,6 +130,9 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
                 originalId: item.id
             }));
             setList(restored);
+        } else {
+            // Start Empty
+            setList([]);
         }
     };
 
@@ -180,6 +186,7 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
     else setEveningList(filter);
   };
 
+  // 1. Manual Save Button
   const handleSaveClick = (shift: ShockwaveShift) => {
     const list = shift === 'MORNING' ? morningList : shift === 'DAILY' ? dailyList : eveningList;
     if (list.filter(i => i.checked).length === 0) {
@@ -188,6 +195,73 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
     setConfirmingShift(shift);
   };
 
+  // 2. Add Item Click
+  const handleAddItemClick = (shift: ShockwaveShift) => {
+    setAddModeShift(shift);
+  };
+
+  // 3. Modal Items Selected -> Go to Staff Select
+  const handleItemsSelected = (items: {id: string, label: string}[]) => {
+    if (addModeShift && items.length > 0) {
+        setPendingAddItems({ shift: addModeShift, items });
+        setAddModeShift(null); 
+    } else {
+        setAddModeShift(null);
+    }
+  };
+
+  // 4. Staff Selected for Add -> Add Checked & Save
+  const handleConfirmAddWithStaff = async (staffIds: string[]) => {
+    if (!pendingAddItems) return;
+
+    setOpStatus('loading');
+    setOpMessage('항목 추가 및 저장 중...');
+
+    const { shift, items } = pendingAddItems;
+    
+    // Create items (checked = true)
+    const newRuntimeItems: RuntimeChecklistItem[] = items.map(i => ({
+        id: `added_${shift}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        label: i.label,
+        checked: true,
+        originalId: i.id
+    }));
+
+    // Merge
+    let currentList: RuntimeChecklistItem[] = [];
+    if (shift === 'MORNING') currentList = morningList;
+    else if (shift === 'DAILY') currentList = dailyList;
+    else currentList = eveningList;
+
+    const updatedList = [...currentList, ...newRuntimeItems];
+
+    if (shift === 'MORNING') setMorningList(updatedList);
+    else if (shift === 'DAILY') setDailyList(updatedList);
+    else setEveningList(updatedList);
+
+    const checklistData: ShockwaveChecklistItem[] = updatedList.map(item => ({
+      id: item.id,
+      label: item.label,
+      checked: item.checked
+    }));
+
+    const res = await logShockwaveAction(shift, checklistData, staffIds);
+
+    if (res.success) {
+      setOpStatus('success');
+      setOpMessage('추가 및 완료 처리됨');
+      loadLogs();
+    } else {
+      setOpStatus('error');
+      setOpMessage('저장 실패');
+      alert(res.message);
+    }
+    
+    setPendingAddItems(null);
+    setTimeout(() => setOpStatus('idle'), 1000);
+  };
+
+  // 5. Manual Save Confirm
   const handleConfirmSave = async (staffIds: string[]) => {
     if (!confirmingShift) return;
 
@@ -339,7 +413,7 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
                    items={morningList}
                    onToggle={(id) => toggleCheck('MORNING', id)}
                    onSave={() => handleSaveClick('MORNING')}
-                   onAdd={() => setAddModeShift('MORNING')}
+                   onAdd={() => handleAddItemClick('MORNING')}
                    onDelete={(id) => deleteItemFromShift('MORNING', id)}
                    theme="border-amber-200 dark:border-amber-800"
                    staff={staff}
@@ -354,7 +428,7 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
                    items={dailyList}
                    onToggle={(id) => toggleCheck('DAILY', id)}
                    onSave={() => handleSaveClick('DAILY')}
-                   onAdd={() => setAddModeShift('DAILY')}
+                   onAdd={() => handleAddItemClick('DAILY')}
                    onDelete={(id) => deleteItemFromShift('DAILY', id)}
                    theme="border-blue-200 dark:border-blue-800"
                    staff={staff}
@@ -369,7 +443,7 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
                    items={eveningList}
                    onToggle={(id) => toggleCheck('EVENING', id)}
                    onSave={() => handleSaveClick('EVENING')}
-                   onAdd={() => setAddModeShift('EVENING')}
+                   onAdd={() => handleAddItemClick('EVENING')}
                    onDelete={(id) => deleteItemFromShift('EVENING', id)}
                    theme="border-indigo-200 dark:border-indigo-800"
                    staff={staff}
@@ -392,6 +466,7 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
         </div>
       )}
 
+      {/* Staff Select Manual Save */}
       <StaffSelectionModal
         isOpen={confirmingShift !== null}
         onClose={() => setConfirmingShift(null)}
@@ -399,6 +474,17 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
         staff={staff}
         title="업무 완료"
         confirmLabel="저장 완료"
+      />
+
+      {/* Staff Select for Add Item (Immediate) */}
+      <StaffSelectionModal
+        isOpen={!!pendingAddItems}
+        onClose={() => setPendingAddItems(null)}
+        onConfirm={handleConfirmAddWithStaff}
+        staff={staff}
+        title="수행 직원 선택"
+        message="추가한 항목을 수행한 직원을 선택하세요. (즉시 저장됨)"
+        confirmLabel="추가 및 저장"
       />
 
       {isConfigOpen && (
@@ -419,7 +505,7 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
             addModeShift === 'DAILY' ? config.dailyItems : 
             config.eveningItems
         }
-        onConfirm={(items) => addModeShift && addItemToShift(addModeShift, items)}
+        onConfirm={handleItemsSelected}
         onUpdateCatalog={(newItems) => addModeShift && handleUpdateCatalog(addModeShift, newItems)}
       />
     </div>
