@@ -58,7 +58,11 @@ export const useBedData = (settings: Record<string, any>, tasks: Task[], onRefre
       if (!logRes.success) {
          console.error("Log failed:", logRes.message);
          // Alert user on ANY error so they know why history isn't saving
-         alert(`이력 저장 실패: ${logRes.message}\n(설정 > DB 연결 > SQL 코드 복사를 통해 테이블 및 권한을 업데이트해주세요)`);
+         if (logRes.message?.includes('schema cache') || logRes.message?.includes('performed_by')) {
+             alert(`데이터베이스 스키마 오류: 'performed_by' 컬럼을 찾을 수 없습니다.\n설정 > DB 연결 탭에서 최신 SQL 코드를 복사하여 Supabase SQL Editor에서 실행해주세요.`);
+         } else {
+             alert(`이력 저장 실패: ${logRes.message}\n(설정 > DB 연결 > SQL 코드 복사를 통해 테이블 및 권한을 업데이트해주세요)`);
+         }
       }
 
       const updatedBeds = beds.map(b => 

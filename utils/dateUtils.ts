@@ -11,6 +11,16 @@ export const getWeekRange = (date: Date) => {
   return { start, end };
 };
 
+export const getYearRange = (date: Date) => {
+  const start = new Date(date.getFullYear(), 0, 1); // Jan 1st
+  start.setHours(0, 0, 0, 0);
+  
+  const end = new Date(date.getFullYear(), 11, 31); // Dec 31st
+  end.setHours(23, 59, 59, 999);
+  
+  return { start, end };
+};
+
 export const getCalendarGridDays = (currentDate: Date, viewMode: 'week' | 'month') => {
   const days: Date[] = [];
   const year = currentDate.getFullYear();
@@ -57,7 +67,7 @@ export const isSameMonth = (d1: Date, d2: Date) => {
          d1.getFullYear() === d2.getFullYear();
 };
 
-export const formatDateRange = (currentDate: Date, viewMode: 'day' | 'week' | 'month') => {
+export const formatDateRange = (currentDate: Date, viewMode: 'day' | 'week' | 'month' | 'year') => {
   const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'numeric', day: 'numeric', weekday: 'short' };
   
   if (viewMode === 'day') {
@@ -65,6 +75,8 @@ export const formatDateRange = (currentDate: Date, viewMode: 'day' | 'week' | 'm
   } else if (viewMode === 'week') {
     const { start, end } = getWeekRange(currentDate);
     return `${start.getMonth() + 1}.${start.getDate()} ~ ${end.getMonth() + 1}.${end.getDate()} (주간)`;
+  } else if (viewMode === 'year') {
+    return `${currentDate.getFullYear()}년 전체`;
   } else {
     return currentDate.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long' });
   }

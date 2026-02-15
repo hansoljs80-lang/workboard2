@@ -1,6 +1,6 @@
 
 export const SUPABASE_SCHEMA_SQL = `
--- 물리치료실 업무 보드 Supabase 초기화 스크립트 (v15 - Fix Bed Logs Permission)
+-- 물리치료실 업무 보드 Supabase 초기화 스크립트 (v16 - Fix Schema Cache & Missing Columns)
 -- Supabase 대시보드 > SQL Editor에 복사하여 실행하세요.
 
 -- 1. UUID 확장 기능 활성화 (필수)
@@ -59,6 +59,11 @@ create table if not exists public.bed_logs (
     created_at timestamptz default now(),
     note text
 );
+
+-- [Fix] Ensure columns exist if table was created previously without them
+alter table public.bed_logs add column if not exists performed_by jsonb default '[]'::jsonb;
+alter table public.bed_logs add column if not exists bed_name text;
+alter table public.bed_logs add column if not exists action_type text default 'CHANGE';
 
 -- 7. LAUNDRY LOGS (빨래 업무 로그) 테이블
 create table if not exists public.laundry_logs (
@@ -122,7 +127,7 @@ alter table public.shockwave_logs enable row level security;
 alter table public.pt_room_logs enable row level security;
 alter table public.changing_room_logs enable row level security;
 
--- 기존 정책 삭제 (중복 방지 - 중요!)
+-- 기존 정책 삭제 (중복 방지)
 drop policy if exists "Enable all access for all users" on public.staff;
 drop policy if exists "Enable all access for all users" on public.templates;
 drop policy if exists "Enable all access for all users" on public.tasks;
@@ -144,7 +149,7 @@ create policy "Enable all access for all users" on public.shockwave_logs for all
 create policy "Enable all access for all users" on public.pt_room_logs for all using (true) with check (true);
 create policy "Enable all access for all users" on public.changing_room_logs for all using (true) with check (true);
 
--- 권한 부여 (Permission Grant - 필수)
+-- 권한 부여 (Permission Grant)
 grant all on table public.staff to anon, authenticated, service_role;
 grant all on table public.templates to anon, authenticated, service_role;
 grant all on table public.tasks to anon, authenticated, service_role;
@@ -154,4 +159,7 @@ grant all on table public.laundry_logs to anon, authenticated, service_role;
 grant all on table public.shockwave_logs to anon, authenticated, service_role;
 grant all on table public.pt_room_logs to anon, authenticated, service_role;
 grant all on table public.changing_room_logs to anon, authenticated, service_role;
+
+-- [Fix] Force Schema Cache Reload (Supabase/PostgREST)
+NOTIFY pgrst, 'reload schema';
 `;
