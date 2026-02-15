@@ -57,10 +57,8 @@ export const useBedData = (settings: Record<string, any>, tasks: Task[], onRefre
       
       if (!logRes.success) {
          console.error("Log failed:", logRes.message);
-         // If table missing, warn user but allow state update to proceed so the counter resets
-         if (logRes.message?.includes('does not exist')) {
-             alert("이력 저장 실패: 'bed_logs' 테이블이 없습니다.\n설정 > DB 연결 > SQL 코드 복사 후 Supabase SQL Editor에서 실행해주세요.\n(카운트다운은 정상적으로 초기화됩니다)");
-         }
+         // Alert user on ANY error so they know why history isn't saving
+         alert(`이력 저장 실패: ${logRes.message}\n(설정 > DB 연결 > SQL 코드 복사를 통해 테이블 및 권한을 업데이트해주세요)`);
       }
 
       const updatedBeds = beds.map(b => 

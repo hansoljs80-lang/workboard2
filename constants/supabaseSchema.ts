@@ -1,7 +1,6 @@
 
-
 export const SUPABASE_SCHEMA_SQL = `
--- 물리치료실 업무 보드 Supabase 초기화 스크립트 (v14 - Add Changing Room Logs)
+-- 물리치료실 업무 보드 Supabase 초기화 스크립트 (v15 - Fix Bed Logs Permission)
 -- Supabase 대시보드 > SQL Editor에 복사하여 실행하세요.
 
 -- 1. UUID 확장 기능 활성화 (필수)
@@ -87,7 +86,7 @@ create table if not exists public.pt_room_logs (
     created_at timestamptz default now()
 );
 
--- 10. CHANGING ROOM LOGS (탈의실 관리 로그) 테이블 -- NEW
+-- 10. CHANGING ROOM LOGS (탈의실 관리 로그) 테이블
 create table if not exists public.changing_room_logs (
     id text default uuid_generate_v4()::text primary key,
     shift_type text not null, -- 'MORNING', 'LUNCH', 'ADHOC'
@@ -123,7 +122,7 @@ alter table public.shockwave_logs enable row level security;
 alter table public.pt_room_logs enable row level security;
 alter table public.changing_room_logs enable row level security;
 
--- 기존 정책 삭제 (중복 방지)
+-- 기존 정책 삭제 (중복 방지 - 중요!)
 drop policy if exists "Enable all access for all users" on public.staff;
 drop policy if exists "Enable all access for all users" on public.templates;
 drop policy if exists "Enable all access for all users" on public.tasks;
