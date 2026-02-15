@@ -1,6 +1,6 @@
 
 export const SUPABASE_SCHEMA_SQL = `
--- 물리치료실 업무 보드 Supabase 초기화 스크립트 (v18 - Add Equipments Table)
+-- 물리치료실 업무 보드 Supabase 초기화 스크립트 (v19 - Consumables Pack Unit)
 -- Supabase 대시보드 > SQL Editor에 복사하여 실행하세요.
 
 -- 1. UUID 확장 기능 활성화 (필수)
@@ -107,12 +107,21 @@ create table if not exists public.consumables (
     category text,
     count integer default 0,
     unit text default '개',
+    
+    -- [Added for v19] Pack Unit Support
+    items_per_pack integer default 1,
+    pack_unit text,
+
     vendor_name text,
     vendor_phone text,
     note text,
     created_at timestamptz default now(),
     updated_at timestamptz default now()
 );
+
+-- [Fix] Ensure columns exist
+alter table public.consumables add column if not exists items_per_pack integer default 1;
+alter table public.consumables add column if not exists pack_unit text;
 
 -- 12. EQUIPMENTS (장비 관리) 테이블 (New)
 create table if not exists public.equipments (
@@ -197,6 +206,5 @@ grant all on table public.changing_room_logs to anon, authenticated, service_rol
 grant all on table public.consumables to anon, authenticated, service_role;
 grant all on table public.equipments to anon, authenticated, service_role;
 
--- [Fix] Force Schema Cache Reload (Supabase/PostgREST)
 NOTIFY pgrst, 'reload schema';
 `;

@@ -13,9 +13,8 @@ export enum Tab {
   LAUNDRY = 'laundry',     // 4. 세탁 관리
   CHANGING_ROOM = 'changing_room', // 5. 탈의실 관리
   CONSUMABLES = 'consumables', // 6. 소모품 관리
-  EQUIPMENT = 'equipment', // 7. 장비 관리 (New)
-  BOARD = 'board',         // 8. 통계 대시보드
-  STAFF = 'staff',
+  EQUIPMENT = 'equipment', // 7. 장비 관리
+  STAFF = 'staff',         // 8. 직원 관리
   SETTINGS = 'settings',
   GENERAL_SETTINGS = 'general_settings'
 }
@@ -81,8 +80,13 @@ export interface Consumable {
   id: string;
   name: string;
   category?: string;
-  count: number;
-  unit: string;
+  count: number; // 총 낱개 수량 (DB 저장 기준)
+  unit: string;  // 낱개 단위 (예: 개, ea)
+  
+  // New Fields for Pack Management
+  itemsPerPack?: number; // 묶음 당 낱개 수 (예: 800)
+  packUnit?: string;     // 묶음 단위 명 (예: Box)
+  
   vendorName?: string;
   vendorPhone?: string;
   note?: string;

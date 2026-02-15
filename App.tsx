@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { Database } from 'lucide-react';
-import Board from './components/Board';
 import StaffManager from './components/StaffManager';
 import Settings from './components/Settings';
 import GeneralSettings from './components/GeneralSettings';
@@ -69,7 +68,7 @@ const App: React.FC = () => {
             tasks={tasks} // Pass tasks for synchronization
             settings={settings} 
             onRefresh={loadData} 
-            onNavigateToBoard={() => setActiveTab(Tab.BOARD)}
+            onNavigateToBoard={() => {}}
           />
         );
       case Tab.LAUNDRY:
@@ -88,9 +87,6 @@ const App: React.FC = () => {
         return (
           <EquipmentManager />
         );
-      case Tab.BOARD:
-        // Changed: Board is now the Statistics Dashboard
-        return <Board staff={staff} />;
       case Tab.STAFF:
         return <StaffManager staffList={staff} tasks={tasks} templates={templates} onRefresh={loadData} />;
       case Tab.GENERAL_SETTINGS:

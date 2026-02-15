@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Consumable } from '../../types';
-import { X, Save, Plus } from 'lucide-react';
+import { X, Save, Layers, Box, Type } from 'lucide-react';
 import { addConsumable, updateConsumable } from '../../services/consumableService';
 
 interface ConsumableFormModalProps {
@@ -24,13 +24,25 @@ const ConsumableFormModal: React.FC<ConsumableFormModalProps> = ({
     vendorPhone: '',
     note: ''
   });
-  const [loading, setLoading] = useState(false);
+  
+  // Pack Management State
+  const [isPackMode, setIsPackMode] = useState(false);
+  const [packData, setPackData] = useState({
+    packUnit: 'Box',
+    itemsPerPack: 100,
+    currentPacks: 0 // Used for input, eventually updates formData.count
+  });
 
-  // Suggestions for units
-  const UNIT_SUGGESTIONS = ['개', 'Box', '통', 'EA', 'Set', '권', 'Box (대)', 'Box (소)'];
+  const [loading, setLoading] = useState(false);
+  
+  // Suggestions
+  const UNIT_SUGGESTIONS = ['개', 'ea', '장', 'ml', 'L'];
+  const PACK_SUGGESTIONS = ['Box', 'Set', '통', '권', '포', 'Roll'];
 
   useEffect(() => {
     if (initialData) {
+      const hasPackInfo = initialData.itemsPerPack && initialData.itemsPerPack > 1;
+      
       setFormData({
         name: initialData.name,
         category: initialData.category || '',
@@ -40,8 +52,25 @@ const ConsumableFormModal: React.FC<ConsumableFormModalProps> = ({
         vendorPhone: initialData.vendorPhone || '',
         note: initialData.note || ''
       });
+
+      if (hasPackInfo) {
+        setIsPackMode(true);
+        setPackData({
+          packUnit: initialData.packUnit || 'Box',
+          itemsPerPack: initialData.itemsPerPack || 100,
+          currentPacks: parseFloat((initialData.count / (initialData.itemsPerPack || 1)).toFixed(2))
+        });
+      }
     }
   }, [initialData]);
+
+  // Effect: When pack data changes in Pack Mode, update the Total Count automatically
+  useEffect(() => {
+    if (isPackMode) {
+      const total = Math.round(packData.currentPacks * packData.itemsPerPack);
+      setFormData(prev => ({ ...prev, count: total }));
+    }
+  }, [packData, isPackMode]);
 
   if (!isOpen) return null;
 
@@ -51,10 +80,21 @@ const ConsumableFormModal: React.FC<ConsumableFormModalProps> = ({
 
     setLoading(true);
     try {
-      if (initialData) {
-        await updateConsumable(initialData.id, formData);
+      const finalData: any = { ...formData };
+      
+      // If Pack Mode, include pack info. If not, explicitly nullify or set defaults
+      if (isPackMode) {
+        finalData.itemsPerPack = packData.itemsPerPack;
+        finalData.packUnit = packData.packUnit;
       } else {
-        await addConsumable(formData);
+        finalData.itemsPerPack = 1;
+        finalData.packUnit = null;
+      }
+
+      if (initialData) {
+        await updateConsumable(initialData.id, finalData);
+      } else {
+        await addConsumable(finalData);
       }
       onSuccess();
     } catch (e) {
@@ -77,9 +117,9 @@ const ConsumableFormModal: React.FC<ConsumableFormModalProps> = ({
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 space-y-5 custom-scrollbar">
            
-           {/* Name & Category */}
+           {/* 1. Basic Info */}
            <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2 md:col-span-1">
                  <label className="block text-xs font-bold text-slate-500 mb-1">품명 (필수)</label>
@@ -107,35 +147,128 @@ const ConsumableFormModal: React.FC<ConsumableFormModalProps> = ({
               </div>
            </div>
 
-           {/* Count & Unit */}
-           <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700">
-              <label className="block text-xs font-bold text-slate-500 mb-2">재고 수량 설정</label>
-              <div className="flex gap-2 items-center">
-                 <input 
-                   type="number" 
-                   min="0"
-                   value={formData.count}
-                   onChange={e => setFormData({...formData, count: parseInt(e.target.value) || 0})}
-                   className="w-24 p-2 text-center text-lg font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg"
-                 />
+           {/* 2. Unit & Count Strategy */}
+           <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700 transition-all">
+              <div className="flex justify-between items-center mb-4">
+                 <label className="text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                    <Layers size={16} className="text-blue-500" /> 재고 및 단위 설정
+                 </label>
                  
-                 <div className="flex-1 relative">
-                    <input 
-                      type="text" 
-                      list="unit-options"
-                      value={formData.unit}
-                      onChange={e => setFormData({...formData, unit: e.target.value})}
-                      className="w-full p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg text-sm"
-                      placeholder="단위 (예: Box, 개, 통)"
-                    />
-                    <datalist id="unit-options">
-                       {UNIT_SUGGESTIONS.map(u => <option key={u} value={u} />)}
-                    </datalist>
+                 {/* Mode Toggle */}
+                 <div className="flex bg-white dark:bg-slate-900 rounded-lg p-1 border border-slate-200 dark:border-slate-700">
+                    <button
+                      type="button"
+                      onClick={() => setIsPackMode(false)}
+                      className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${!isPackMode ? 'bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm' : 'text-slate-400'}`}
+                    >
+                      낱개 관리
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsPackMode(true)}
+                      className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${isPackMode ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-400'}`}
+                    >
+                      묶음(Box) 관리
+                    </button>
                  </div>
               </div>
-              <p className="text-[10px] text-slate-400 mt-2">
-                 * 단위 예시: "Box", "통", "10개입 Box" 등 자유롭게 입력 가능
-              </p>
+
+              {isPackMode ? (
+                 <div className="space-y-4 animate-fade-in">
+                    {/* Pack Definition */}
+                    <div className="grid grid-cols-2 gap-4 bg-white dark:bg-slate-900 p-3 rounded-lg border border-blue-100 dark:border-blue-900/30">
+                        <div className="col-span-2 text-[10px] font-bold text-blue-500 mb-[-8px]">묶음 기준 설정</div>
+                        <div>
+                           <label className="block text-[10px] text-slate-400 mb-1">묶음 단위명</label>
+                           <input 
+                             list="pack-units"
+                             value={packData.packUnit}
+                             onChange={(e) => setPackData({...packData, packUnit: e.target.value})}
+                             className="w-full p-2 border-b border-slate-200 dark:border-slate-700 bg-transparent text-sm font-bold outline-none focus:border-blue-500 text-center"
+                             placeholder="Box"
+                           />
+                           <datalist id="pack-units">{PACK_SUGGESTIONS.map(u => <option key={u} value={u} />)}</datalist>
+                        </div>
+                        <div>
+                           <label className="block text-[10px] text-slate-400 mb-1">1 묶음 당 낱개 수</label>
+                           <div className="flex items-center gap-1">
+                             <input 
+                               type="number" min="1"
+                               value={packData.itemsPerPack}
+                               onChange={(e) => setPackData({...packData, itemsPerPack: parseInt(e.target.value) || 1})}
+                               className="w-full p-2 border-b border-slate-200 dark:border-slate-700 bg-transparent text-sm font-bold outline-none focus:border-blue-500 text-center"
+                             />
+                             <span className="text-xs text-slate-400 font-medium">개</span>
+                           </div>
+                        </div>
+                        <div className="col-span-2 text-center text-[10px] text-slate-400 bg-slate-50 dark:bg-slate-800 py-1 rounded">
+                           1 {packData.packUnit || 'Box'} = {packData.itemsPerPack} {formData.unit}
+                        </div>
+                    </div>
+
+                    {/* Current Quantity */}
+                    <div className="grid grid-cols-2 gap-4 items-end">
+                       <div>
+                          <label className="block text-xs font-bold text-slate-500 mb-1">현재 묶음 수량</label>
+                          <div className="flex items-center gap-2">
+                             <input 
+                               type="number" min="0" step="0.1"
+                               value={packData.currentPacks}
+                               onChange={(e) => setPackData({...packData, currentPacks: parseFloat(e.target.value) || 0})}
+                               className="w-full p-2.5 bg-white dark:bg-slate-800 border-2 border-blue-100 dark:border-blue-900/50 rounded-lg text-lg font-black text-blue-600 dark:text-blue-400 text-center focus:border-blue-500 outline-none"
+                             />
+                             <span className="text-sm font-bold text-slate-500">{packData.packUnit}</span>
+                          </div>
+                       </div>
+                       
+                       <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded-lg flex flex-col justify-center items-center h-[52px]">
+                          <span className="text-[10px] text-slate-400">총 낱개 (자동계산)</span>
+                          <div className="font-bold text-slate-600 dark:text-slate-300">
+                             {formData.count.toLocaleString()} <span className="text-xs font-normal">{formData.unit}</span>
+                          </div>
+                       </div>
+                    </div>
+                    
+                    {/* Unit Name (Bottom) */}
+                    <div>
+                        <label className="block text-[10px] text-slate-400 mb-1">낱개 단위명 (최소 단위)</label>
+                        <input 
+                          type="text" 
+                          list="unit-options"
+                          value={formData.unit}
+                          onChange={e => setFormData({...formData, unit: e.target.value})}
+                          className="w-full p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg text-sm"
+                          placeholder="예: 개, ea"
+                        />
+                        <datalist id="unit-options">{UNIT_SUGGESTIONS.map(u => <option key={u} value={u} />)}</datalist>
+                    </div>
+                 </div>
+              ) : (
+                 <div className="flex gap-3 items-end animate-fade-in">
+                    <div className="flex-1">
+                       <label className="block text-xs font-bold text-slate-500 mb-1">현재 총 재고량</label>
+                       <input 
+                         type="number" 
+                         min="0"
+                         value={formData.count}
+                         onChange={e => setFormData({...formData, count: parseInt(e.target.value) || 0})}
+                         className="w-full p-3 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-600 rounded-xl text-xl font-black text-center focus:border-blue-500 outline-none"
+                       />
+                    </div>
+                    <div className="w-24">
+                       <label className="block text-xs font-bold text-slate-500 mb-1">단위</label>
+                       <input 
+                         type="text" 
+                         list="unit-options"
+                         value={formData.unit}
+                         onChange={e => setFormData({...formData, unit: e.target.value})}
+                         className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl text-sm text-center"
+                         placeholder="개"
+                       />
+                       <datalist id="unit-options">{UNIT_SUGGESTIONS.map(u => <option key={u} value={u} />)}</datalist>
+                    </div>
+                 </div>
+              )}
            </div>
 
            {/* Vendor Info */}
@@ -189,7 +322,7 @@ const ConsumableFormModal: React.FC<ConsumableFormModalProps> = ({
            <button 
              onClick={handleSubmit}
              disabled={loading || !formData.name}
-             className="flex-[2] py-3 bg-orange-600 text-white font-bold rounded-xl shadow-lg hover:bg-orange-700 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
+             className="flex-[2] py-3 bg-blue-600 text-white font-bold rounded-xl shadow-lg hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
            >
              <Save size={18} />
              {loading ? '저장 중...' : '저장하기'}

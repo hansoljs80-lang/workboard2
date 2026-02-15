@@ -68,16 +68,16 @@ const EquipmentCard: React.FC<EquipmentCardProps> = ({ item, onEdit, onDelete, o
                <div className="bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-100 dark:border-slate-700">
                   <p className="text-[10px] text-slate-400 font-bold mb-0.5">유지보수 / 업체</p>
                   <div className="flex justify-between items-center">
-                     <span className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate mr-2">
+                     <span className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate mr-2 max-w-[50%]">
                         {item.vendorName}
                      </span>
                      {item.vendorPhone && (
                         <a 
                            href={`tel:${item.vendorPhone}`}
-                           className="flex items-center gap-1 text-[10px] font-bold text-white bg-green-500 hover:bg-green-600 px-2 py-1 rounded-md transition-colors shadow-sm active:scale-95"
+                           className="flex items-center gap-1 text-[10px] font-bold text-white bg-green-500 hover:bg-green-600 px-2 py-1 rounded-md transition-colors shadow-sm active:scale-95 whitespace-nowrap"
                         >
                            <Phone size={10} className="fill-current" />
-                           통화
+                           {item.vendorPhone}
                         </a>
                      )}
                   </div>

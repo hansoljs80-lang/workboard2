@@ -20,6 +20,8 @@ export const fetchConsumables = async (): Promise<{ success: boolean; data?: Con
       category: row.category,
       count: row.count,
       unit: row.unit,
+      itemsPerPack: row.items_per_pack,
+      packUnit: row.pack_unit,
       vendorName: row.vendor_name,
       vendorPhone: row.vendor_phone,
       note: row.note,
@@ -42,6 +44,8 @@ export const addConsumable = async (item: Omit<Consumable, 'id' | 'updatedAt'>) 
       category: item.category,
       count: item.count,
       unit: item.unit,
+      items_per_pack: item.itemsPerPack,
+      pack_unit: item.packUnit,
       vendor_name: item.vendorName,
       vendor_phone: item.vendorPhone,
       note: item.note,
@@ -66,6 +70,8 @@ export const updateConsumable = async (id: string, updates: Partial<Consumable>)
     if (updates.category !== undefined) dbUpdates.category = updates.category;
     if (updates.count !== undefined) dbUpdates.count = updates.count;
     if (updates.unit !== undefined) dbUpdates.unit = updates.unit;
+    if (updates.itemsPerPack !== undefined) dbUpdates.items_per_pack = updates.itemsPerPack;
+    if (updates.packUnit !== undefined) dbUpdates.pack_unit = updates.packUnit;
     if (updates.vendorName !== undefined) dbUpdates.vendor_name = updates.vendorName;
     if (updates.vendorPhone !== undefined) dbUpdates.vendor_phone = updates.vendorPhone;
     if (updates.note !== undefined) dbUpdates.note = updates.note;
