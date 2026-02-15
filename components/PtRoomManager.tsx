@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Staff, PtRoomShift, PtRoomLog, PtRoomChecklistItem, PtRoomConfig, PtPeriodicItem } from '../types';
 import { Stethoscope, Sun, Moon, Clock, LayoutGrid, History, CheckSquare, Square, Save, AlertCircle, Copy, Filter, Settings, CalendarRange, Check, AlertTriangle, RefreshCw, CheckCircle2 } from 'lucide-react';
@@ -388,7 +389,7 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 p-4 md:p-6 pb-24 overflow-hidden">
+    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 p-4 md:p-6 pb-6 overflow-hidden">
       <StatusOverlay status={opStatus} message={opMessage} />
 
       {/* Header */}
