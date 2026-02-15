@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Check, Trash2, Pencil, Save } from 'lucide-react';
+import { X, Plus, Check, Trash2, Pencil, Save, ChevronUp, ChevronDown } from 'lucide-react';
 
 interface CatalogItem {
   id: string;
@@ -96,6 +96,19 @@ const ItemSelectorModal: React.FC<ItemSelectorModalProps> = ({
     setEditingId(null);
   };
 
+  const handleMoveItem = (index: number, direction: 'up' | 'down') => {
+    if (!onUpdateCatalog) return;
+    const newList = [...items];
+    if (direction === 'up') {
+      if (index === 0) return;
+      [newList[index - 1], newList[index]] = [newList[index], newList[index - 1]];
+    } else {
+      if (index === newList.length - 1) return;
+      [newList[index + 1], newList[index]] = [newList[index], newList[index + 1]];
+    }
+    onUpdateCatalog(newList);
+  };
+
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[9999] animate-fade-in">
       <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[85vh]">
@@ -141,7 +154,7 @@ const ItemSelectorModal: React.FC<ItemSelectorModalProps> = ({
              </div>
            ) : (
              <div className="grid gap-2">
-               {items.map(item => {
+               {items.map((item, index) => {
                  const isSelected = selectedIds.includes(item.id);
                  const isEditingThis = editingId === item.id;
 
@@ -155,6 +168,28 @@ const ItemSelectorModal: React.FC<ItemSelectorModalProps> = ({
                          : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}
                      `}
                    >
+                     {/* Reorder Buttons */}
+                     {onUpdateCatalog && (
+                        <div className="flex flex-col gap-0.5 mr-1 shrink-0">
+                            <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); handleMoveItem(index, 'up'); }}
+                                disabled={index === 0}
+                                className="text-slate-300 hover:text-blue-500 disabled:opacity-20 disabled:hover:text-slate-300 transition-colors p-0.5"
+                            >
+                                <ChevronUp size={12} />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); handleMoveItem(index, 'down'); }}
+                                disabled={index === items.length - 1}
+                                className="text-slate-300 hover:text-blue-500 disabled:opacity-20 disabled:hover:text-slate-300 transition-colors p-0.5"
+                            >
+                                <ChevronDown size={12} />
+                            </button>
+                        </div>
+                     )}
+
                      {/* Checkbox Area */}
                      <button
                         onClick={() => toggleSelection(item.id)}
