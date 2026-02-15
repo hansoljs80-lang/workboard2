@@ -230,8 +230,8 @@ const BedCard: React.FC<BedCardProps> = ({ bed, staff, interval, onChange, onNam
                 <AvatarStack 
                   ids={bed.lastChangedBy} 
                   staff={staff} 
-                  size="xs" 
-                  max={1} 
+                  size="xl" // Changed to xl (2 steps larger than md)
+                  max={5} 
                 />
                 <div className="absolute -bottom-1 -right-1 bg-white dark:bg-slate-700 rounded-full p-0.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
                    <UserCog size={10} className="text-blue-500" />

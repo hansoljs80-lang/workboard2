@@ -12,19 +12,19 @@ interface StatCardProps {
 }
 
 export const StatCard: React.FC<StatCardProps> = ({ title, count, icon, colorClass, trend }) => (
-  <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm flex items-center justify-between transition-transform hover:scale-[1.02]">
+  <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow group">
     <div>
-      <p className="text-sm font-bold text-slate-500 dark:text-slate-400 mb-1">{title}</p>
-      <h3 className="text-3xl font-black text-slate-800 dark:text-slate-100">{count.toLocaleString()}</h3>
-      {trend && <p className="text-xs text-slate-400 mt-1">{trend}</p>}
+      <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-0.5">{title}</p>
+      <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100">{count.toLocaleString()}</h3>
+      {trend && <p className="text-[10px] text-slate-400 mt-0.5">{trend}</p>}
     </div>
-    <div className={`p-4 rounded-xl ${colorClass}`}>
+    <div className={`p-3 rounded-xl ${colorClass} group-hover:scale-110 transition-transform`}>
       {icon}
     </div>
   </div>
 );
 
-// 2. Bar Chart (Staff Ranking) - Enhanced
+// 2. Bar Chart (Staff Ranking) - Compact & Stylish
 interface RankingChartProps {
   data: Record<string, number>;
   staff: Staff[];
@@ -32,42 +32,42 @@ interface RankingChartProps {
 }
 
 export const RankingChart: React.FC<RankingChartProps> = ({ data, staff, color = 'bg-blue-500' }) => {
-  // Cast Object.entries to ensure values are treated as numbers
   const sorted = (Object.entries(data) as [string, number][])
     .sort((a, b) => b[1] - a[1]);
-    // .slice(0, 10); // Show Top 10
 
   const maxVal = sorted[0]?.[1] || 1;
 
-  if (sorted.length === 0) return <div className="text-center text-slate-400 py-10 text-sm">데이터가 없습니다.</div>;
+  if (sorted.length === 0) return <div className="h-full flex items-center justify-center text-slate-400 text-xs">데이터가 없습니다.</div>;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2.5 overflow-y-auto custom-scrollbar pr-2 h-full">
       {sorted.map(([id, count], idx) => {
         const member = staff.find(s => s.id === id);
-        // Fallback color if member has no color or member not found
         const barColor = member?.color || '#94a3b8'; 
+        const percentage = (count / maxVal) * 100;
         
         return (
-          <div key={id} className="flex items-center gap-3 group">
-            <div className="w-6 text-xs font-bold text-slate-400 text-center shrink-0">{idx + 1}</div>
-            <div className="flex-1">
-              <div className="flex justify-between text-xs mb-1 font-bold">
-                <span className="text-slate-700 dark:text-slate-200 flex items-center gap-1">
+          <div key={id} className="group">
+            <div className="flex justify-between text-xs mb-1">
+              <div className="flex items-center gap-2">
+                 <span className={`
+                    w-4 h-4 flex items-center justify-center rounded-full text-[9px] font-bold
+                    ${idx < 3 ? 'bg-slate-800 text-white dark:bg-white dark:text-slate-900' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'}
+                 `}>
+                   {idx + 1}
+                 </span>
+                 <span className="font-bold text-slate-700 dark:text-slate-300">
                    {member?.name || '미정'}
-                   {member?.isActive === false && <span className="text-[9px] font-normal text-slate-400">(퇴사)</span>}
-                </span>
-                <span className="text-slate-600 dark:text-slate-400">{count}</span>
+                   {member?.isActive === false && <span className="text-[9px] font-normal text-slate-400 ml-1">(퇴사)</span>}
+                 </span>
               </div>
-              <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                <div 
-                  className="h-full rounded-full transition-all duration-1000 relative"
-                  style={{ width: `${(count / maxVal) * 100}%`, backgroundColor: barColor }}
-                >
-                   {/* Shine effect */}
-                   <div className="absolute top-0 left-0 bottom-0 right-0 bg-white/20" />
-                </div>
-              </div>
+              <span className="font-bold text-slate-600 dark:text-slate-400">{count}</span>
+            </div>
+            <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+              <div 
+                className="h-full rounded-full transition-all duration-1000 ease-out"
+                style={{ width: `${percentage}%`, backgroundColor: barColor }}
+              />
             </div>
           </div>
         );
@@ -76,97 +76,56 @@ export const RankingChart: React.FC<RankingChartProps> = ({ data, staff, color =
   );
 };
 
-// 3. Activity Line Chart (SVG) - Enhanced with Labels
+// 3. Bar Chart (Activity Trend) - Replaces Line Chart
 interface ActivityChartProps {
   data: Record<string, number>;
-  lineColor?: string;
+  lineColor?: string; // Kept prop name for compatibility, used for bar color
 }
 
 export const ActivityChart: React.FC<ActivityChartProps> = ({ data, lineColor = 'text-blue-500' }) => {
   // Sort dates properly
-  const sortedLabels = Object.keys(data).sort((a, b) => {
-     // Simple lexicographical sort works for ISO-like strings or fixed formats, 
-     // but ideally we rely on the provider sending sorted keys or comparable strings.
-     return a.localeCompare(b);
-  });
-
+  const sortedLabels = Object.keys(data).sort((a, b) => a.localeCompare(b));
   const values = sortedLabels.map(d => data[d]);
   
-  if (values.length === 0) return <div className="h-full flex items-center justify-center text-slate-400 text-sm">데이터가 없습니다.</div>;
+  if (values.length === 0) return <div className="h-full flex items-center justify-center text-slate-400 text-xs">데이터가 없습니다.</div>;
 
-  const max = Math.max(...values, 1); // Avoid division by zero
-  // Add some padding to top
-  const graphMax = max * 1.1; 
-
-  const height = 100;
-  const width = 100; 
-
-  // Generate SVG Points
-  const points = values.map((val, idx) => {
-    const x = (idx / (values.length - 1 || 1)) * 100;
-    const y = 100 - (val / graphMax) * 100;
-    return `${x},${y}`;
-  }).join(' ');
-
-  // Generate Area Path (close the loop)
-  const areaPoints = `0,100 ${points} 100,100`;
+  const max = Math.max(...values, 1);
+  // Color extraction: "text-blue-500" -> "bg-blue-500"
+  const barColorClass = lineColor.replace('text-', 'bg-');
 
   return (
-    <div className="h-full w-full flex flex-col">
-      <div className="flex-1 relative w-full min-h-[150px]">
-        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full overflow-visible">
-          {/* Background Area */}
-          <polygon points={areaPoints} className={`${lineColor.replace('text-', 'fill-')} opacity-10`} />
-
-          {/* Grid Lines */}
-          <line x1="0" y1="0" x2="100" y2="0" stroke="currentColor" className="text-slate-100 dark:text-slate-800" strokeWidth="0.5" strokeDasharray="2" />
-          <line x1="0" y1="25" x2="100" y2="25" stroke="currentColor" className="text-slate-100 dark:text-slate-800" strokeWidth="0.5" strokeDasharray="2" />
-          <line x1="0" y1="50" x2="100" y2="50" stroke="currentColor" className="text-slate-100 dark:text-slate-800" strokeWidth="0.5" strokeDasharray="2" />
-          <line x1="0" y1="75" x2="100" y2="75" stroke="currentColor" className="text-slate-100 dark:text-slate-800" strokeWidth="0.5" strokeDasharray="2" />
-          <line x1="0" y1="100" x2="100" y2="100" stroke="currentColor" className="text-slate-200 dark:text-slate-700" strokeWidth="1" />
-          
-          {/* Polyline */}
-          <polyline 
-             points={points} 
-             fill="none" 
-             stroke="currentColor" 
-             className={lineColor} 
-             strokeWidth="2" 
-             strokeLinecap="round" 
-             strokeLinejoin="round" 
-             vectorEffect="non-scaling-stroke"
-          />
-          
-          {/* Dots */}
-          {values.map((val, idx) => {
-             const x = (idx / (values.length - 1 || 1)) * 100;
-             const y = 100 - (val / graphMax) * 100;
-             return (
-               <g key={idx} className="group">
-                 <circle cx={x} cy={y} r="1.5" className={`${lineColor.replace('text-', 'fill-')} stroke-white dark:stroke-slate-900`} strokeWidth="0.5" />
-                 {/* Tooltip on hover */}
-                 <foreignObject x={x - 10} y={y - 15} width="20" height="20" className="opacity-0 group-hover:opacity-100 transition-opacity overflow-visible">
-                    <div className="bg-slate-800 text-white text-[8px] px-1 py-0.5 rounded text-center whitespace-nowrap transform -translate-x-1/2 -translate-y-full pointer-events-none">
-                      {val}
-                    </div>
-                 </foreignObject>
-               </g>
-             );
-          })}
-        </svg>
+    <div className="h-full w-full flex flex-col justify-end">
+      <div className="flex items-end justify-between gap-1 h-full pt-4">
+        {values.map((val, idx) => {
+          const heightPercent = Math.max((val / max) * 100, 5); // Minimum 5% height
+          return (
+            <div key={idx} className="flex-1 flex flex-col justify-end items-center group relative h-full">
+               {/* Tooltip */}
+               <div className="absolute -top-8 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] px-2 py-1 rounded font-bold whitespace-nowrap z-10 pointer-events-none mb-1">
+                  {sortedLabels[idx]}: {val}건
+                  <div className="absolute bottom-[-4px] left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+               </div>
+               
+               {/* Bar */}
+               <div 
+                 className={`w-full max-w-[20px] rounded-t-md opacity-80 hover:opacity-100 transition-all duration-300 ${barColorClass}`}
+                 style={{ height: `${heightPercent}%` }}
+               ></div>
+            </div>
+          );
+        })}
       </div>
       
-      {/* X-Axis Labels */}
-      <div className="flex justify-between mt-2 text-[9px] text-slate-400 font-medium px-1">
-         {/* Show only some labels to avoid clutter */}
+      {/* X-Axis Labels (Simplified) */}
+      <div className="flex justify-between mt-2 text-[9px] text-slate-400 font-medium px-1 border-t border-slate-100 dark:border-slate-800 pt-1">
          {sortedLabels.map((label, idx) => {
-            // Show first, last, and intermittent labels
-            const total = sortedLabels.length;
-            const step = Math.ceil(total / 6); 
-            if (idx === 0 || idx === total - 1 || idx % step === 0) {
-               return <span key={idx}>{label}</span>;
-            }
-            return null; 
+            // Show start, end, and middle labels appropriately to prevent clutter
+            const showLabel = idx === 0 || idx === sortedLabels.length - 1 || (sortedLabels.length > 5 && idx === Math.floor(sortedLabels.length / 2));
+            return (
+               <span key={idx} className={showLabel ? 'opacity-100' : 'opacity-0'}>
+                 {label}
+               </span>
+            );
          })}
       </div>
     </div>

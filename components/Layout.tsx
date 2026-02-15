@@ -53,7 +53,6 @@ const Layout: React.FC<LayoutProps> = ({
       {/* Main Content Area */}
       <main className={`
         flex-1 overflow-hidden relative flex flex-col w-full bg-slate-100 dark:bg-slate-950 transition-all duration-300
-        ${!isSidebarOpen ? 'pl-14' : ''}
       `}>
         
         {/* Floating Open Button (Visible when sidebar is closed) */}
