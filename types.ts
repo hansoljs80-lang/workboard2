@@ -3,20 +3,19 @@ export enum TaskStatus {
   TODO = '할일',
   IN_PROGRESS = '진행중',
   DONE = '완료',
-  SKIPPED = '건너뜀' // New status: Hides task from board but prevents regeneration
+  SKIPPED = '건너뜀'
 }
 
 export enum Tab {
-  BOARD = 'board',
-  DRAFTS = 'drafts',       // List view & Creation view combined
+  PT_ROOM = 'pt_room',     // 1. 물리치료실 (Default)
+  SHOCKWAVE = 'shockwave', // 2. 충격파실
+  BEDS = 'beds',           // 3. 배드 커버 관리
+  LAUNDRY = 'laundry',     // 4. 세탁 관리
+  CHANGING_ROOM = 'changing_room', // 5. 탈의실 관리
+  BOARD = 'board',         // 6. 통계 대시보드 (구 업무보드)
   STAFF = 'staff',
-  BEDS = 'beds',           // Bed Management
-  LAUNDRY = 'laundry',     // Laundry Management
-  SHOCKWAVE = 'shockwave', // Shockwave Management
-  PT_ROOM = 'pt_room',     // New: PT Room Management
-  CHANGING_ROOM = 'changing_room', // New: Changing Room Management
-  SETTINGS = 'settings',   // Now DB Settings
-  GENERAL_SETTINGS = 'general_settings' // New General Settings
+  SETTINGS = 'settings',
+  GENERAL_SETTINGS = 'general_settings'
 }
 
 export interface Staff {
@@ -24,7 +23,7 @@ export interface Staff {
   name: string;
   role: string;
   color: string;
-  isActive: boolean; // Added for employment status (Active/Resigned)
+  isActive: boolean;
 }
 
 export type RecurrenceType = 'none' | 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'custom_days';
@@ -34,31 +33,31 @@ export interface Task {
   title: string;
   description: string;
   status: TaskStatus;
-  assigneeIds: string[]; // JSON array of Staff IDs
-  completedBy?: string[]; // JSON array of Staff IDs who actually completed the task
+  assigneeIds: string[];
+  completedBy?: string[];
   createdAt: string;
-  recurrenceType?: RecurrenceType; // Added for filtering in monthly view
-  recurrenceInterval?: number; // Added for specific badges (e.g. "Every 2 days") - Front-end mostly
-  sourceTemplateId?: string; // Link to the template that created this task
+  recurrenceType?: RecurrenceType;
+  recurrenceInterval?: number;
+  sourceTemplateId?: string;
 }
 
 export interface ScheduleConfig {
   type: RecurrenceType;
-  intervalValue?: number; // Universal interval (every N days/weeks/months)
-  weekDay?: number; // Deprecated: keeping for backward compatibility logic
-  weekDays?: number[]; // New: Array of 0-6 (Sun-Sat) for multi-day selection
-  monthDay?: number; // 1-31 for monthly
+  intervalValue?: number;
+  weekDay?: number;
+  weekDays?: number[];
+  monthDay?: number;
 }
 
 export interface Template {
   id: string;
   title: string;
   description: string;
-  scheduleConfig?: ScheduleConfig; // Added schedule config
-  assigneeIds?: string[]; // Added: Templates can now have default assignees
-  isActive: boolean; // Added toggle state
-  createdAt: string; // Needed for custom interval calculation
-  updatedAt?: string; // New: Versioning timestamp (When it was modified/archived)
+  scheduleConfig?: ScheduleConfig;
+  assigneeIds?: string[];
+  isActive: boolean;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 export interface ApiResponse {
@@ -71,7 +70,7 @@ export interface AppData {
   tasks: Task[];
   staff: Staff[];
   templates: Template[];
-  settings?: Record<string, any>; // Added: Global Settings Key-Value Map
+  settings?: Record<string, any>;
 }
 
 // --- Bed Manager Types ---
@@ -80,14 +79,14 @@ export interface BedData {
   id: number;
   name: string;
   lastChanged: string | null;
-  lastChangedBy?: string[]; // New: Staff IDs who performed the change
+  lastChangedBy?: string[];
 }
 
 export interface BedConfig {
   count: number;
-  interval: number; // Days
-  routineDay: number; // 0=Sun, 1=Mon...
-  cols: number; // Desktop columns
+  interval: number;
+  routineDay: number;
+  cols: number;
 }
 
 export type BedStatusLevel = 'success' | 'warning' | 'danger' | 'today';
@@ -127,7 +126,7 @@ export interface ShockwaveChecklistItem {
   id: string;
   label: string;
   checked: boolean;
-  performedBy?: string; // Optional: Store name of performer for ad-hoc items
+  performedBy?: string;
 }
 
 export interface ShockwaveLog {
@@ -152,14 +151,14 @@ export interface PtRoomChecklistItem {
   id: string;
   label: string;
   checked: boolean;
-  performedBy?: string; // Optional: Store name of performer for ad-hoc items
+  performedBy?: string;
 }
 
 export interface PtPeriodicItem {
   id: string;
   label: string;
-  interval: number; // Days
-  lastCompleted?: string; // ISO Date String
+  interval: number;
+  lastCompleted?: string;
 }
 
 export interface PtRoomLog {
@@ -177,7 +176,7 @@ export interface PtRoomConfig {
   periodicItems: PtPeriodicItem[];
 }
 
-// --- Changing Room Types (New) ---
+// --- Changing Room Types ---
 
 export type ChangingRoomShift = 'MORNING' | 'LUNCH' | 'ADHOC';
 
@@ -185,7 +184,7 @@ export interface ChangingRoomChecklistItem {
   id: string;
   label: string;
   checked: boolean;
-  performedBy?: string; // Optional: Store name of performer for ad-hoc items
+  performedBy?: string;
 }
 
 export interface ChangingRoomLog {

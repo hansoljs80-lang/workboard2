@@ -1,22 +1,23 @@
+
 import React, { useState, useEffect } from 'react';
 import { Database } from 'lucide-react';
 import Board from './components/Board';
 import StaffManager from './components/StaffManager';
 import Settings from './components/Settings';
 import GeneralSettings from './components/GeneralSettings';
-import DraftManager from './components/DraftManager';
 import BedManager from './components/BedManager';
 import LaundryManager from './components/LaundryManager'; 
 import ShockwaveManager from './components/ShockwaveManager'; 
 import PtRoomManager from './components/PtRoomManager'; 
-import ChangingRoomManager from './components/ChangingRoomManager'; // New Import
+import ChangingRoomManager from './components/ChangingRoomManager';
 import Layout from './components/Layout';
 import { useAppData } from './hooks/useAppData';
 import { Tab } from './types';
 import { useUI } from './context/UIContext';
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<Tab>(Tab.BOARD);
+  // Default to PT Room as requested
+  const [activeTab, setActiveTab] = useState<Tab>(Tab.PT_ROOM);
   const { tasks, staff, templates, settings, loading, isConfigured, loadData } = useAppData();
   const { setAppTitle } = useUI();
 
@@ -51,17 +52,13 @@ const App: React.FC = () => {
     }
 
     switch (activeTab) {
-      case Tab.BOARD:
-        // Pass templates to Board for virtual task generation
-        return <Board tasks={tasks} staff={staff} templates={templates} onRefresh={loadData} />;
-      case Tab.DRAFTS:
+      case Tab.PT_ROOM:
         return (
-          <DraftManager 
-            templates={templates} 
-            staff={staff} 
-            onRefresh={loadData} 
-            onNavigateToBoard={() => setActiveTab(Tab.BOARD)}
-          />
+          <PtRoomManager staff={staff} />
+        );
+      case Tab.SHOCKWAVE:
+        return (
+          <ShockwaveManager staff={staff} />
         );
       case Tab.BEDS:
         return (
@@ -77,20 +74,14 @@ const App: React.FC = () => {
         return (
           <LaundryManager staff={staff} />
         );
-      case Tab.PT_ROOM:
-        return (
-          <PtRoomManager staff={staff} />
-        );
-      case Tab.SHOCKWAVE:
-        return (
-          <ShockwaveManager staff={staff} />
-        );
-      case Tab.CHANGING_ROOM: // New Case
+      case Tab.CHANGING_ROOM:
         return (
           <ChangingRoomManager staff={staff} />
         );
+      case Tab.BOARD:
+        // Changed: Board is now the Statistics Dashboard
+        return <Board staff={staff} />;
       case Tab.STAFF:
-        // Pass tasks and templates to enable Safe Delete logic
         return <StaffManager staffList={staff} tasks={tasks} templates={templates} onRefresh={loadData} />;
       case Tab.GENERAL_SETTINGS:
         return <GeneralSettings />;

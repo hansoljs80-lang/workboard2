@@ -47,19 +47,28 @@ const BedHistory: React.FC<BedHistoryProps> = ({ staff }) => {
   };
 
   // 2. Data Adapter (BedLog -> GenericLog)
-  const genericLogs: GenericLog[] = logs.map(log => ({
-    id: log.id,
-    shiftType: 'CHANGE', // Group all under 'CHANGE' type
-    // Convert bedName to a checklist item so it appears in the detail view
-    checklist: [{ 
-      id: 'bed_name', 
-      label: log.bedName, 
-      checked: true,
-      performedBy: undefined // Optional: could map log.performedBy names here if needed
-    }],
-    performedBy: log.performedBy,
-    createdAt: log.createdAt
-  }));
+  const genericLogs: GenericLog[] = logs.map(log => {
+    // Resolve staff names for display in the checklist item
+    const performerNames = log.performedBy
+      .map(id => staff.find(s => s.id === id)?.name)
+      .filter(Boolean)
+      .join(', ');
+
+    return {
+      id: log.id,
+      shiftType: 'CHANGE', 
+      checklist: [{ 
+        // Use bedName as ID so the "Detail Filter" in GenericHistoryView groups them correctly
+        // (e.g. Filter by "1번 베드", "2번 베드")
+        id: log.bedName, 
+        label: log.bedName, 
+        checked: true,
+        performedBy: performerNames || undefined
+      }],
+      performedBy: log.performedBy,
+      createdAt: log.createdAt
+    };
+  });
 
   // 3. Tab Configuration
   const historyTabs: HistoryTabOption[] = [

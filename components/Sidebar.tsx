@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { LayoutDashboard, Users, Database, ClipboardList, Moon, Sun, Settings as SettingsIcon, Menu, RefreshCw, PanelLeftClose, BedDouble, Shirt, Activity, Stethoscope, DoorOpen } from 'lucide-react';
+import { LayoutDashboard, Users, Database, Moon, Sun, Settings as SettingsIcon, RefreshCw, PanelLeftClose, BedDouble, Shirt, Activity, Stethoscope, DoorOpen } from 'lucide-react';
 import { Tab } from '../types';
 import { useTheme } from '../context/ThemeContext';
 
@@ -36,13 +37,12 @@ const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const menuItems = [
-    { id: Tab.BOARD, label: '보드', icon: <LayoutDashboard size={20} /> },
-    { id: Tab.DRAFTS, label: '업무 목록', icon: <ClipboardList size={20} /> },
-    { id: Tab.BEDS, label: '배드 관리', icon: <BedDouble size={20} /> },
-    { id: Tab.LAUNDRY, label: '빨래 업무', icon: <Shirt size={20} /> },
-    { id: Tab.SHOCKWAVE, label: '충격파실', icon: <Activity size={20} /> },
     { id: Tab.PT_ROOM, label: '물리치료실', icon: <Stethoscope size={20} /> },
-    { id: Tab.CHANGING_ROOM, label: '탈의실', icon: <DoorOpen size={20} /> },
+    { id: Tab.SHOCKWAVE, label: '충격파실', icon: <Activity size={20} /> },
+    { id: Tab.BEDS, label: '배드 커버 관리', icon: <BedDouble size={20} /> },
+    { id: Tab.LAUNDRY, label: '세탁 관리', icon: <Shirt size={20} /> },
+    { id: Tab.CHANGING_ROOM, label: '탈의실 관리', icon: <DoorOpen size={20} /> },
+    { id: Tab.BOARD, label: '통계 대시보드', icon: <LayoutDashboard size={20} /> },
     { id: Tab.STAFF, label: '직원 관리', icon: <Users size={20} /> },
   ];
 
