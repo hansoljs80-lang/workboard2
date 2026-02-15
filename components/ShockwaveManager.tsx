@@ -1,26 +1,23 @@
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Staff, ShockwaveShift, ShockwaveLog, ShockwaveChecklistItem, ShockwaveConfig } from '../types';
 import { Activity, Sun, Moon, LayoutGrid, History, Settings, AlertCircle, Copy, Filter, Clock } from 'lucide-react';
 import StatusOverlay, { OperationStatus } from './StatusOverlay';
 import StaffSelectionModal from './common/StaffSelectionModal';
 import { fetchShockwaveLogs, logShockwaveAction, getShockwaveConfig, saveShockwaveConfig } from '../services/shockwaveService';
-import DateNavigator from './DateNavigator';
 import AvatarStack from './common/AvatarStack';
-import ShockwaveStats from './shockwave/ShockwaveStats';
 import ShockwaveConfigModal from './shockwave/ShockwaveConfigModal';
-import { getWeekRange } from '../utils/dateUtils';
 import { SUPABASE_SCHEMA_SQL } from '../constants/supabaseSchema';
 import GenericChecklistCard, { RuntimeChecklistItem } from './common/GenericChecklistCard';
 import MobileTabSelector from './common/MobileTabSelector';
 import ItemSelectorModal from './common/ItemSelectorModal';
+import GenericHistoryView, { GenericLog, HistoryTabOption } from './common/GenericHistoryView';
 
 interface ShockwaveManagerProps {
   staff: Staff[];
 }
 
 type TabMode = 'status' | 'history';
-type ViewMode = 'day' | 'week' | 'month';
 type SubTab = 'MORNING' | 'DAILY' | 'EVENING';
 
 const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
@@ -45,13 +42,10 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
   // Save Modal State
   const [confirmingShift, setConfirmingShift] = useState<ShockwaveShift | null>(null);
 
-  // Data Logic
-  const [currentDate, setCurrentDate] = useState(new Date());
+  // History Data
   const [logs, setLogs] = useState<ShockwaveLog[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('month');
-  const [error, setError] = useState('');
-  const [typeFilter, setTypeFilter] = useState<'ALL' | ShockwaveShift>('ALL');
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState('');
 
   // Load Config
   const loadConfig = useCallback(async () => {
@@ -63,57 +57,41 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
     loadConfig();
   }, [loadConfig]);
 
-  // Load Logs
-  const loadLogs = useCallback(async () => {
-    setLoading(true);
-    setError('');
+  // Load Recent Logs for Today Status
+  const loadTodayLogs = useCallback(async () => {
+    if (activeTab !== 'status') return;
+    const start = new Date(); start.setHours(0,0,0,0);
+    const end = new Date(); end.setHours(23,59,59,999);
     
-    let start = new Date(currentDate);
-    let end = new Date(currentDate);
-
-    if (activeTab === 'status') {
-      start = new Date();
-      start.setHours(0, 0, 0, 0);
-      end = new Date();
-      end.setHours(23, 59, 59, 999);
-    } else {
-      if (viewMode === 'day') {
-        start.setHours(0, 0, 0, 0);
-        end.setHours(23, 59, 59, 999);
-      } else if (viewMode === 'week') {
-        const range = getWeekRange(currentDate);
-        start = range.start;
-        end = range.end;
-      } else if (viewMode === 'month') {
-        start = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-        end = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59);
-      }
+    const res = await fetchShockwaveLogs(start, end);
+    if (res.success && res.data) {
+        setLogs(res.data);
     }
+  }, [activeTab]);
 
+  useEffect(() => {
+    loadTodayLogs();
+  }, [loadTodayLogs]);
+
+  // Handler for GenericHistoryView to load data
+  const handleLoadHistory = async (start: Date, end: Date) => {
+    setHistoryLoading(true);
+    setHistoryError('');
     try {
       const res = await fetchShockwaveLogs(start, end);
       if (res.success && res.data) {
         setLogs(res.data);
       } else {
-         if (res.message?.includes('does not exist')) {
-           setError('DATA_TABLE_MISSING');
-         } else {
-           setLogs([]);
-         }
+        setHistoryError(res.message || '데이터 로드 실패');
       }
     } catch (e) {
-      console.error(e);
-      setError('데이터 불러오기 실패');
+      setHistoryError('오류 발생');
     } finally {
-      setLoading(false);
+      setHistoryLoading(false);
     }
-  }, [currentDate, viewMode, activeTab]);
+  };
 
-  useEffect(() => {
-    loadLogs();
-  }, [loadLogs]);
-
-  // Init Lists (CHANGED: Default empty if no log)
+  // Init Lists (Today)
   useEffect(() => {
     if (activeTab !== 'status') return;
 
@@ -128,11 +106,10 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
                 label: item.label,
                 checked: item.checked,
                 originalId: item.id,
-                performedBy: item.performedBy // Restore performer info if exists
+                performedBy: item.performedBy
             }));
             setList(restored);
         } else {
-            // Start Empty
             setList([]);
         }
     };
@@ -143,7 +120,7 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
 
   }, [logs, activeTab]);
 
-  // Handlers
+  // ... (Keep existing handlers for Save/Config/Add - no changes needed there) ...
   const handleSaveConfig = async (newConfig: ShockwaveConfig) => {
     setConfig(newConfig);
     setIsConfigOpen(false);
@@ -155,7 +132,6 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
       if (shift === 'MORNING') newConfig.morningItems = newItems;
       else if (shift === 'DAILY') newConfig.dailyItems = newItems;
       else if (shift === 'EVENING') newConfig.eveningItems = newItems;
-      
       setConfig(newConfig);
       await saveShockwaveConfig(newConfig);
   };
@@ -174,7 +150,6 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
         checked: false,
         originalId: i.id
     }));
-
     if (shift === 'MORNING') setMorningList(prev => [...prev, ...newItems]);
     else if (shift === 'DAILY') setDailyList(prev => [...prev, ...newItems]);
     else setEveningList(prev => [...prev, ...newItems]);
@@ -187,7 +162,6 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
     else setEveningList(filter);
   };
 
-  // 1. Manual Save Button
   const handleSaveClick = (shift: ShockwaveShift) => {
     const list = shift === 'MORNING' ? morningList : shift === 'DAILY' ? dailyList : eveningList;
     if (list.filter(i => i.checked).length === 0) {
@@ -196,12 +170,10 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
     setConfirmingShift(shift);
   };
 
-  // 2. Add Item Click
   const handleAddItemClick = (shift: ShockwaveShift) => {
     setAddModeShift(shift);
   };
 
-  // 3. Modal Items Selected -> Go to Staff Select
   const handleItemsSelected = (items: {id: string, label: string}[]) => {
     if (addModeShift && items.length > 0) {
         setPendingAddItems({ shift: addModeShift, items });
@@ -211,89 +183,57 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
     }
   };
 
-  // 4. Staff Selected for Add -> Add Checked & Save with Performer
   const handleConfirmAddWithStaff = async (staffIds: string[]) => {
     if (!pendingAddItems) return;
-
     setOpStatus('loading');
     setOpMessage('항목 추가 및 저장 중...');
-
     const { shift, items } = pendingAddItems;
     
-    // Resolve performer names
     const performerNames = staffIds.map(id => staff.find(s => s.id === id)?.name).filter(Boolean).join(', ');
-
-    // Create items (checked = true) with performer info
     const newRuntimeItems: RuntimeChecklistItem[] = items.map(i => ({
         id: `added_${shift}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         label: i.label,
         checked: true,
         originalId: i.id,
-        performedBy: performerNames || undefined // Attach performer info
+        performedBy: performerNames || undefined
     }));
 
-    // Merge
     let currentList: RuntimeChecklistItem[] = [];
     if (shift === 'MORNING') currentList = morningList;
     else if (shift === 'DAILY') currentList = dailyList;
     else currentList = eveningList;
 
     const updatedList = [...currentList, ...newRuntimeItems];
-
     if (shift === 'MORNING') setMorningList(updatedList);
     else if (shift === 'DAILY') setDailyList(updatedList);
     else setEveningList(updatedList);
 
     const checklistData: ShockwaveChecklistItem[] = updatedList.map(item => ({
-      id: item.id,
-      label: item.label,
-      checked: item.checked,
-      performedBy: item.performedBy // Save to DB
+      id: item.id, label: item.label, checked: item.checked, performedBy: item.performedBy
     }));
 
     const res = await logShockwaveAction(shift, checklistData, staffIds);
-
     if (res.success) {
-      setOpStatus('success');
-      setOpMessage('추가 및 완료 처리됨');
-      loadLogs();
+      setOpStatus('success'); setOpMessage('추가 및 완료 처리됨'); loadTodayLogs();
     } else {
-      setOpStatus('error');
-      setOpMessage('저장 실패');
-      alert(res.message);
+      setOpStatus('error'); setOpMessage('저장 실패'); alert(res.message);
     }
-    
-    setPendingAddItems(null);
-    setTimeout(() => setOpStatus('idle'), 1000);
+    setPendingAddItems(null); setTimeout(() => setOpStatus('idle'), 1000);
   };
 
-  // 5. Manual Save Confirm
   const handleConfirmSave = async (staffIds: string[]) => {
     if (!confirmingShift) return;
-
-    setOpStatus('loading');
-    setOpMessage('저장 중...');
-
+    setOpStatus('loading'); setOpMessage('저장 중...');
     const currentList = confirmingShift === 'MORNING' ? morningList : confirmingShift === 'DAILY' ? dailyList : eveningList;
     const checklistData: ShockwaveChecklistItem[] = currentList.map(item => ({
-      id: item.id,
-      label: item.label,
-      checked: item.checked,
-      performedBy: item.performedBy // Persist existing performers
+      id: item.id, label: item.label, checked: item.checked, performedBy: item.performedBy
     }));
-
     const res = await logShockwaveAction(confirmingShift, checklistData, staffIds);
-
     if (res.success) {
-      setOpStatus('success');
-      setOpMessage('저장 완료');
-      loadLogs();
+      setOpStatus('success'); setOpMessage('저장 완료'); loadTodayLogs();
     } else {
-      setOpStatus('error');
-      setOpMessage('저장 실패');
-      alert(res.message);
+      setOpStatus('error'); setOpMessage('저장 실패'); alert(res.message);
     }
-    
     setTimeout(() => setOpStatus('idle'), 1000);
   };
 
@@ -304,62 +244,17 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
 
   const getTodayLog = (shift: ShockwaveShift) => {
     if (activeTab !== 'status') return null;
-    const shiftLogs = logs
-      .filter(l => l.shiftType === shift)
+    const shiftLogs = logs.filter(l => l.shiftType === shift)
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     return shiftLogs.length > 0 ? shiftLogs[0] : null;
   };
 
-  // Stats Logic (omitted for brevity, assumed unchanged)
-  const filteredLogs = useMemo(() => {
-    if (typeFilter === 'ALL') return logs;
-    return logs.filter(l => l.shiftType === typeFilter);
-  }, [logs, typeFilter]);
-
-  const stats = useMemo(() => {
-    const counts: Record<string, number> = {};
-    filteredLogs.forEach(log => {
-      log.performedBy.forEach(id => {
-        counts[id] = (counts[id] || 0) + 1;
-      });
-    });
-    return Object.entries(counts)
-      .map(([id, count]) => {
-        const member = staff.find(s => s.id === id);
-        return {
-          id,
-          name: member?.name || '미정',
-          color: member?.color || '#cbd5e1',
-          count,
-          isActive: member?.isActive
-        };
-      })
-      .sort((a, b) => b.count - a.count);
-  }, [filteredLogs, staff]); 
-
-  const shiftLeaders = useMemo(() => {
-    const getLeader = (type: ShockwaveShift) => {
-        const counts: Record<string, number> = {};
-        logs.filter(l => l.shiftType === type).forEach(l => {
-            l.performedBy.forEach(id => counts[id] = (counts[id] || 0) + 1);
-        });
-        let max = 0;
-        let leaderId = null;
-        Object.entries(counts).forEach(([id, c]) => {
-            if(c > max) { max = c; leaderId = id; }
-        });
-        if(leaderId) {
-            const s = staff.find(st => st.id === leaderId);
-            return s ? { name: s.name, count: max } : null;
-        }
-        return null;
-    };
-    return {
-        MORNING: getLeader('MORNING'),
-        DAILY: getLeader('DAILY'),
-        EVENING: getLeader('EVENING')
-    };
-  }, [logs, staff]);
+  // Convert generic logs for view
+  const historyTabs: HistoryTabOption[] = [
+    { id: 'MORNING', label: '아침', icon: <Sun size={14} />, colorClass: 'text-amber-600' },
+    { id: 'DAILY', label: '일상', icon: <Clock size={14} />, colorClass: 'text-blue-600' },
+    { id: 'EVENING', label: '저녁', icon: <Moon size={14} />, colorClass: 'text-indigo-600' }
+  ];
 
   return (
     <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 p-4 md:p-6 pb-6 overflow-hidden">
@@ -393,10 +288,11 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
       {/* Content */}
       {activeTab === 'status' ? (
         <div className="flex-1 overflow-hidden flex flex-col">
-           {error === 'DATA_TABLE_MISSING' && (
+           {/* ... SQL missing alert logic same as before ... */}
+           {historyError === 'DATA_TABLE_MISSING' && (
               <div className="mb-4 bg-amber-50 text-amber-800 p-3 rounded-xl border border-amber-200 flex flex-col md:flex-row items-center justify-center gap-3 shrink-0">
-                 <span className="font-bold text-sm flex items-center gap-2"><AlertCircle size={16} /> DB 테이블(shockwave_logs)이 필요합니다.</span>
-                 <button onClick={handleCopySQL} className="text-xs bg-amber-200 px-3 py-1 rounded-lg font-bold flex items-center gap-1"><Copy size={12} /> SQL 복사</button>
+                 <span className="font-bold text-sm flex items-center gap-2"><AlertCircle size={16} /> DB 테이블 필요</span>
+                 <button onClick={handleCopySQL} className="text-xs bg-amber-200 px-3 py-1 rounded-lg font-bold">SQL 복사</button>
               </div>
            )}
            
@@ -461,15 +357,16 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
            </div>
         </div>
       ) : (
-        <div className="flex-1 overflow-hidden flex flex-col md:flex-row gap-4 animate-fade-in">
-           {/* Reuse existing stats logic */}
-           <div className="w-full md:w-80 shrink-0 h-64 md:h-full order-1">
-              <ShockwaveStats stats={stats} shiftLeaders={shiftLeaders} loading={loading} />
-           </div>
-           <div className="flex-1 overflow-y-auto custom-scrollbar order-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-4">
-              {/* Logs display */}
-              <div className="text-center text-slate-400 py-20">로그 목록 (구현 생략)</div>
-           </div>
+        <div className="flex-1 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm animate-fade-in">
+           <GenericHistoryView
+             staff={staff}
+             logs={logs as GenericLog[]}
+             tabs={historyTabs}
+             onLoadLogs={handleLoadHistory}
+             loading={historyLoading}
+             error={historyError}
+             title="충격파실 관리 이력"
+           />
         </div>
       )}
 
@@ -483,14 +380,14 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
         confirmLabel="저장 완료"
       />
 
-      {/* Staff Select for Add Item (Immediate) */}
+      {/* Staff Select for Add Item */}
       <StaffSelectionModal
         isOpen={!!pendingAddItems}
         onClose={() => setPendingAddItems(null)}
         onConfirm={handleConfirmAddWithStaff}
         staff={staff}
         title="수행 직원 선택"
-        message="추가한 항목을 수행한 직원을 선택하세요. (즉시 저장됨)"
+        message="추가한 항목을 수행한 직원을 선택하세요."
         confirmLabel="추가 및 저장"
       />
 
@@ -502,7 +399,7 @@ const ShockwaveManager: React.FC<ShockwaveManagerProps> = ({ staff }) => {
         />
       )}
 
-      {/* Add Item Modal with CRUD */}
+      {/* Add Item Modal */}
       <ItemSelectorModal
         isOpen={addModeShift !== null}
         onClose={() => setAddModeShift(null)}

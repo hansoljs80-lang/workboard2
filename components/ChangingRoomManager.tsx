@@ -5,13 +5,13 @@ import { DoorOpen, Sun, Coffee, Eye, LayoutGrid, History, Settings, AlertCircle,
 import StatusOverlay, { OperationStatus } from './StatusOverlay';
 import StaffSelectionModal from './common/StaffSelectionModal';
 import { fetchChangingRoomLogs, logChangingRoomAction, getChangingRoomConfig, saveChangingRoomConfig } from '../services/changingRoomService';
-import ChangingRoomHistory from './changingRoom/ChangingRoomHistory';
 import ChangingRoomConfigModal from './changingRoom/ChangingRoomConfigModal';
 import ChecklistCard from './changingRoom/ChecklistCard';
 import { SUPABASE_SCHEMA_SQL } from '../constants/supabaseSchema';
 import MobileTabSelector from './common/MobileTabSelector';
 import ItemSelectorModal from './common/ItemSelectorModal';
 import { RuntimeChecklistItem } from './common/GenericChecklistCard';
+import GenericHistoryView, { GenericLog, HistoryTabOption } from './common/GenericHistoryView';
 
 interface ChangingRoomManagerProps {
   staff: Staff[];
@@ -44,6 +44,9 @@ const ChangingRoomManager: React.FC<ChangingRoomManagerProps> = ({ staff }) => {
 
   // Data Logic
   const [todayLogs, setTodayLogs] = useState<ChangingRoomLog[]>([]);
+  const [logs, setLogs] = useState<ChangingRoomLog[]>([]); // For history
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState('');
   const [error, setError] = useState('');
 
   // Load Config
@@ -56,26 +59,19 @@ const ChangingRoomManager: React.FC<ChangingRoomManagerProps> = ({ staff }) => {
     loadConfig();
   }, [loadConfig]);
 
-  // Load Today's Logs
+  // Load Today's Logs for Status
   const loadTodayLogs = useCallback(async () => {
     if (activeTab !== 'status') return;
-
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    const end = new Date();
-    end.setHours(23, 59, 59, 999);
-
+    const start = new Date(); start.setHours(0, 0, 0, 0);
+    const end = new Date(); end.setHours(23, 59, 59, 999);
+    
     try {
       const res = await fetchChangingRoomLogs(start, end);
       if (res.success && res.data) {
         setTodayLogs(res.data);
-        setError('');
       } else {
-         if (res.message?.includes('does not exist')) {
-           setError('DATA_TABLE_MISSING');
-         } else {
-           setTodayLogs([]);
-         }
+         if (res.message?.includes('does not exist')) setError('DATA_TABLE_MISSING');
+         else setTodayLogs([]);
       }
     } catch (e) {
       console.error(e);
@@ -85,6 +81,24 @@ const ChangingRoomManager: React.FC<ChangingRoomManagerProps> = ({ staff }) => {
   useEffect(() => {
     loadTodayLogs();
   }, [loadTodayLogs]);
+
+  // History Load Handler
+  const handleLoadHistory = async (start: Date, end: Date) => {
+    setHistoryLoading(true);
+    setHistoryError('');
+    try {
+      const res = await fetchChangingRoomLogs(start, end);
+      if (res.success && res.data) {
+        setLogs(res.data);
+      } else {
+        setHistoryError(res.message || '데이터 로드 실패');
+      }
+    } catch (e) {
+      setHistoryError('오류 발생');
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
 
   // Init Lists
   useEffect(() => {
@@ -101,11 +115,10 @@ const ChangingRoomManager: React.FC<ChangingRoomManagerProps> = ({ staff }) => {
                 label: item.label,
                 checked: item.checked,
                 originalId: item.id,
-                performedBy: item.performedBy // Restore performer
+                performedBy: item.performedBy
             }));
             setList(restored);
         } else {
-            // Start Empty
             setList([]);
         }
     };
@@ -116,7 +129,7 @@ const ChangingRoomManager: React.FC<ChangingRoomManagerProps> = ({ staff }) => {
 
   }, [todayLogs, activeTab]);
 
-  // Handlers
+  // ... (Keep existing handlers for Save/Config/Add - unchanged) ...
   const handleSaveConfig = async (newConfig: ChangingRoomConfig) => {
     setConfig(newConfig);
     setIsConfigOpen(false);
@@ -128,7 +141,6 @@ const ChangingRoomManager: React.FC<ChangingRoomManagerProps> = ({ staff }) => {
       if (shift === 'MORNING') newConfig.morningItems = newItems;
       else if (shift === 'LUNCH') newConfig.lunchItems = newItems;
       else if (shift === 'ADHOC') newConfig.adhocItems = newItems;
-      
       setConfig(newConfig);
       await saveChangingRoomConfig(newConfig);
   };
@@ -147,7 +159,6 @@ const ChangingRoomManager: React.FC<ChangingRoomManagerProps> = ({ staff }) => {
     else setAdhocList(filter);
   };
 
-  // 1. Manual Save Button
   const handleSaveClick = (shift: ChangingRoomShift) => {
     const list = shift === 'MORNING' ? morningList : shift === 'LUNCH' ? lunchList : adhocList;
     if (list.filter(i => i.checked).length === 0) {
@@ -156,107 +167,68 @@ const ChangingRoomManager: React.FC<ChangingRoomManagerProps> = ({ staff }) => {
     setConfirmingShift(shift);
   };
 
-  // 2. Add Item Click
   const handleAddItemClick = (shift: ChangingRoomShift) => {
     setAddModeShift(shift);
   };
 
-  // 3. Modal Items Selected -> Go to Staff Select
   const handleItemsSelected = (items: {id: string, label: string}[]) => {
     if (addModeShift && items.length > 0) {
         setPendingAddItems({ shift: addModeShift, items });
-        setAddModeShift(null); // Close item modal
+        setAddModeShift(null);
     } else {
         setAddModeShift(null);
     }
   };
 
-  // 4. Confirm Staff for New Items -> Add as Checked & Save with Performer
   const handleConfirmAddWithStaff = async (staffIds: string[]) => {
     if (!pendingAddItems) return;
-
-    setOpStatus('loading');
-    setOpMessage('항목 추가 및 저장 중...');
-
+    setOpStatus('loading'); setOpMessage('항목 추가 및 저장 중...');
     const { shift, items } = pendingAddItems;
-    
-    // Resolve performer names
     const performerNames = staffIds.map(id => staff.find(s => s.id === id)?.name).filter(Boolean).join(', ');
-
-    // Create new runtime items (Checked = true) with performer info
     const newRuntimeItems: RuntimeChecklistItem[] = items.map(i => ({
         id: `added_${shift}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         label: i.label,
-        checked: true, // Auto-check
+        checked: true,
         originalId: i.id,
         performedBy: performerNames || undefined
     }));
 
-    // Merge with current list
     let currentList: RuntimeChecklistItem[] = [];
     if (shift === 'MORNING') currentList = morningList;
     else if (shift === 'LUNCH') currentList = lunchList;
     else currentList = adhocList;
 
     const updatedList = [...currentList, ...newRuntimeItems];
-
-    // Update UI State immediately
     if (shift === 'MORNING') setMorningList(updatedList);
     else if (shift === 'LUNCH') setLunchList(updatedList);
     else setAdhocList(updatedList);
 
-    // Prepare payload for DB
     const checklistData: ChangingRoomChecklistItem[] = updatedList.map(item => ({
-      id: item.id, 
-      label: item.label,
-      checked: item.checked,
-      performedBy: item.performedBy // Persist to DB
+      id: item.id, label: item.label, checked: item.checked, performedBy: item.performedBy
     }));
 
-    // Save to DB
     const res = await logChangingRoomAction(shift, checklistData, staffIds);
-
     if (res.success) {
-        setOpStatus('success');
-        setOpMessage('추가 및 완료 처리됨');
-        loadTodayLogs(); // Refresh to sync timestamp etc
+        setOpStatus('success'); setOpMessage('추가 및 완료 처리됨'); loadTodayLogs();
     } else {
-        setOpStatus('error');
-        setOpMessage('저장 실패');
-        alert(res.message);
+        setOpStatus('error'); setOpMessage('저장 실패'); alert(res.message);
     }
-
-    setPendingAddItems(null);
-    setTimeout(() => setOpStatus('idle'), 1000);
+    setPendingAddItems(null); setTimeout(() => setOpStatus('idle'), 1000);
   };
 
-  // 5. Manual Save Confirmation
   const handleConfirmSave = async (staffIds: string[]) => {
     if (!confirmingShift) return;
-
-    setOpStatus('loading');
-    setOpMessage('저장 중...');
-
+    setOpStatus('loading'); setOpMessage('저장 중...');
     const currentList = confirmingShift === 'MORNING' ? morningList : confirmingShift === 'LUNCH' ? lunchList : adhocList;
     const checklistData: ChangingRoomChecklistItem[] = currentList.map(item => ({
-      id: item.id, 
-      label: item.label,
-      checked: item.checked,
-      performedBy: item.performedBy // Keep existing performers
+      id: item.id, label: item.label, checked: item.checked, performedBy: item.performedBy
     }));
-
     const res = await logChangingRoomAction(confirmingShift, checklistData, staffIds);
-
     if (res.success) {
-      setOpStatus('success');
-      setOpMessage('저장 완료');
-      loadTodayLogs();
+      setOpStatus('success'); setOpMessage('저장 완료'); loadTodayLogs();
     } else {
-      setOpStatus('error');
-      setOpMessage('저장 실패');
-      alert(res.message);
+      setOpStatus('error'); setOpMessage('저장 실패'); alert(res.message);
     }
-    
     setTimeout(() => setOpStatus('idle'), 1000);
   };
 
@@ -264,6 +236,12 @@ const ChangingRoomManager: React.FC<ChangingRoomManagerProps> = ({ staff }) => {
     navigator.clipboard.writeText(SUPABASE_SCHEMA_SQL);
     alert("SQL 코드가 클립보드에 복사되었습니다.");
   };
+
+  const historyTabs: HistoryTabOption[] = [
+    { id: 'MORNING', label: '아침', icon: <Sun size={14} />, colorClass: 'text-amber-600' },
+    { id: 'LUNCH', label: '점심', icon: <Coffee size={14} />, colorClass: 'text-orange-600' },
+    { id: 'ADHOC', label: '수시', icon: <Eye size={14} />, colorClass: 'text-teal-600' }
+  ];
 
   return (
     <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 p-4 md:p-6 pb-6 overflow-hidden">
@@ -297,10 +275,11 @@ const ChangingRoomManager: React.FC<ChangingRoomManagerProps> = ({ staff }) => {
       {/* Content */}
       {activeTab === 'status' ? (
         <div className="flex-1 overflow-hidden flex flex-col">
+           {/* ... existing status code ... */}
            {error === 'DATA_TABLE_MISSING' && (
               <div className="mb-4 bg-amber-50 text-amber-800 p-3 rounded-xl border border-amber-200 flex flex-col md:flex-row items-center justify-center gap-3 shrink-0">
-                 <span className="font-bold text-sm flex items-center gap-2"><AlertCircle size={16} /> DB 테이블(changing_room_logs)이 필요합니다.</span>
-                 <button onClick={handleCopySQL} className="text-xs bg-amber-200 px-3 py-1 rounded-lg font-bold flex items-center gap-1"><Copy size={12} /> SQL 복사</button>
+                 <span className="font-bold text-sm flex items-center gap-2"><AlertCircle size={16} /> DB 테이블 필요</span>
+                 <button onClick={handleCopySQL} className="text-xs bg-amber-200 px-3 py-1 rounded-lg font-bold">SQL 복사</button>
               </div>
            )}
            
@@ -365,9 +344,16 @@ const ChangingRoomManager: React.FC<ChangingRoomManagerProps> = ({ staff }) => {
            </div>
         </div>
       ) : (
-        <div className="flex-1 overflow-hidden flex flex-col md:flex-row gap-4 animate-fade-in">
-           {/* History View */}
-           <ChangingRoomHistory staff={staff} />
+        <div className="flex-1 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm animate-fade-in">
+           <GenericHistoryView
+             staff={staff}
+             logs={logs as GenericLog[]}
+             tabs={historyTabs}
+             onLoadLogs={handleLoadHistory}
+             loading={historyLoading}
+             error={historyError}
+             title="탈의실 관리 이력"
+           />
         </div>
       )}
 
