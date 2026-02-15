@@ -96,6 +96,17 @@ export interface Consumable {
   updatedAt: string;
 }
 
+export type ConsumableAction = 'CREATE' | 'UPDATE' | 'DELETE' | 'STOCK';
+
+export interface ConsumableLog {
+  id: string;
+  itemName: string;
+  actionType: ConsumableAction;
+  changes: string; // "수량: 10 -> 20"
+  performedBy: string[];
+  createdAt: string;
+}
+
 // --- Equipment Types (New) ---
 
 export interface Equipment {
@@ -107,6 +118,17 @@ export interface Equipment {
   vendorPhone?: string;
   note?: string; // e.g. AS 번호, 모델명, 구매일
   updatedAt: string;
+}
+
+export type EquipmentAction = 'CREATE' | 'UPDATE' | 'DELETE' | 'COUNT';
+
+export interface EquipmentLog {
+  id: string;
+  itemName: string;
+  actionType: EquipmentAction;
+  changes: string;
+  performedBy: string[];
+  createdAt: string;
 }
 
 // --- Bed Manager Types ---

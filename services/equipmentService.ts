@@ -1,6 +1,6 @@
 
 import { getSupabase } from './supabase';
-import { Equipment } from '../types';
+import { Equipment, EquipmentAction, EquipmentLog } from '../types';
 
 export const fetchEquipments = async (): Promise<{ success: boolean; data?: Equipment[]; message?: string }> => {
   const supabase = getSupabase();
@@ -84,6 +84,63 @@ export const deleteEquipment = async (id: string) => {
     const { error } = await supabase.from('equipments').delete().eq('id', id);
     if (error) throw error;
     return { success: true };
+  } catch (e: any) {
+    return { success: false, message: e.message };
+  }
+};
+
+export const logEquipmentAction = async (
+  itemName: string,
+  actionType: EquipmentAction,
+  changes: string,
+  staffIds: string[]
+) => {
+  const supabase = getSupabase();
+  if (!supabase) return { success: false, message: 'DB Disconnected' };
+
+  try {
+    const { error } = await supabase.from('equipment_logs').insert({
+      item_name: itemName,
+      action_type: actionType,
+      changes: changes,
+      performed_by: staffIds,
+      created_at: new Date().toISOString()
+    });
+
+    if (error) throw error;
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, message: e.message };
+  }
+};
+
+export const fetchEquipmentLogs = async (startDate: Date, endDate: Date): Promise<{ success: boolean; data?: EquipmentLog[]; message?: string }> => {
+  const supabase = getSupabase();
+  if (!supabase) return { success: false, message: 'DB Disconnected' };
+
+  const startISO = startDate.toISOString();
+  const endISO = endDate.toISOString();
+
+  try {
+    const { data, error } = await supabase
+      .from('equipment_logs')
+      .select('*')
+      .gte('created_at', startISO)
+      .lte('created_at', endISO)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    const logs: EquipmentLog[] = (data || []).map((row: any) => ({
+      id: row.id,
+      itemName: row.item_name,
+      actionType: row.action_type,
+      changes: row.changes,
+      performedBy: row.performed_by || [],
+      createdAt: row.created_at
+    }));
+
+    return { success: true, data: logs };
   } catch (e: any) {
     return { success: false, message: e.message };
   }

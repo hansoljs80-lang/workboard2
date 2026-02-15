@@ -2,18 +2,17 @@
 import React, { useState, useEffect } from 'react';
 import { Consumable } from '../../types';
 import { X, Save, Layers, AlertCircle } from 'lucide-react';
-import { addConsumable, updateConsumable } from '../../services/consumableService';
 
 interface ConsumableFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSubmit: (data: Omit<Consumable, 'id' | 'updatedAt'>) => void;
   initialData?: Consumable | null;
   categories: string[];
 }
 
 const ConsumableFormModal: React.FC<ConsumableFormModalProps> = ({ 
-  isOpen, onClose, onSuccess, initialData, categories 
+  isOpen, onClose, onSubmit, initialData, categories 
 }) => {
   const [formData, setFormData] = useState({
     name: '',
@@ -36,8 +35,6 @@ const ConsumableFormModal: React.FC<ConsumableFormModalProps> = ({
   // Reorder Threshold State (Input value)
   const [alertThresholdInput, setAlertThresholdInput] = useState<number>(0);
 
-  const [loading, setLoading] = useState(false);
-  
   // Suggestions
   const UNIT_SUGGESTIONS = ['개', 'ea', '장', 'ml', 'L'];
   const PACK_SUGGESTIONS = ['Box', 'Set', '통', '권', '포', 'Roll'];
@@ -84,38 +81,27 @@ const ConsumableFormModal: React.FC<ConsumableFormModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) return;
 
-    setLoading(true);
-    try {
-      const finalData: any = { ...formData };
-      
-      // Calculate Total Min Count based on mode
-      let totalMinCount = 0;
-      if (isPackMode) {
-        totalMinCount = Math.round(alertThresholdInput * packData.itemsPerPack);
-        finalData.itemsPerPack = packData.itemsPerPack;
-        finalData.packUnit = packData.packUnit;
-      } else {
-        totalMinCount = alertThresholdInput;
-        finalData.itemsPerPack = 1;
-        finalData.packUnit = null;
-      }
-      finalData.minCount = totalMinCount;
-
-      if (initialData) {
-        await updateConsumable(initialData.id, finalData);
-      } else {
-        await addConsumable(finalData);
-      }
-      onSuccess();
-    } catch (e) {
-      alert('저장 실패');
-    } finally {
-      setLoading(false);
+    const finalData: any = { ...formData };
+    
+    // Calculate Total Min Count based on mode
+    let totalMinCount = 0;
+    if (isPackMode) {
+      totalMinCount = Math.round(alertThresholdInput * packData.itemsPerPack);
+      finalData.itemsPerPack = packData.itemsPerPack;
+      finalData.packUnit = packData.packUnit;
+    } else {
+      totalMinCount = alertThresholdInput;
+      finalData.itemsPerPack = 1;
+      finalData.packUnit = null;
     }
+    finalData.minCount = totalMinCount;
+
+    // Pass data to parent instead of calling API directly
+    onSubmit(finalData);
   };
 
   return (
@@ -377,11 +363,11 @@ const ConsumableFormModal: React.FC<ConsumableFormModalProps> = ({
            </button>
            <button 
              onClick={handleSubmit}
-             disabled={loading || !formData.name}
+             disabled={!formData.name}
              className="flex-[2] py-3 bg-blue-600 text-white font-bold rounded-xl shadow-lg hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
            >
              <Save size={18} />
-             {loading ? '저장 중...' : '저장하기'}
+             확인 (직원 선택으로 이동)
            </button>
         </div>
       </div>

@@ -2,18 +2,17 @@
 import React, { useState, useEffect } from 'react';
 import { Equipment } from '../../types';
 import { X, Save } from 'lucide-react';
-import { addEquipment, updateEquipment } from '../../services/equipmentService';
 
 interface EquipmentFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSubmit: (data: Omit<Equipment, 'id' | 'updatedAt'>) => void;
   initialData?: Equipment | null;
   categories: string[];
 }
 
 const EquipmentFormModal: React.FC<EquipmentFormModalProps> = ({ 
-  isOpen, onClose, onSuccess, initialData, categories 
+  isOpen, onClose, onSubmit, initialData, categories 
 }) => {
   const [formData, setFormData] = useState({
     name: '',
@@ -23,7 +22,6 @@ const EquipmentFormModal: React.FC<EquipmentFormModalProps> = ({
     vendorPhone: '',
     note: ''
   });
-  const [loading, setLoading] = useState(false);
 
   // Suggestions for categories
   const DEFAULT_CATEGORIES = ['치료기기', '진단기기', '운동기구', 'PC/가전', '기타'];
@@ -44,23 +42,12 @@ const EquipmentFormModal: React.FC<EquipmentFormModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) return;
-
-    setLoading(true);
-    try {
-      if (initialData) {
-        await updateEquipment(initialData.id, formData);
-      } else {
-        await addEquipment(formData);
-      }
-      onSuccess();
-    } catch (e) {
-      alert('저장 실패');
-    } finally {
-      setLoading(false);
-    }
+    
+    // Pass data to parent
+    onSubmit(formData);
   };
 
   return (
@@ -166,11 +153,11 @@ const EquipmentFormModal: React.FC<EquipmentFormModalProps> = ({
            </button>
            <button 
              onClick={handleSubmit}
-             disabled={loading || !formData.name}
+             disabled={!formData.name}
              className="flex-[2] py-3 bg-cyan-600 text-white font-bold rounded-xl shadow-lg hover:bg-cyan-700 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
            >
              <Save size={18} />
-             {loading ? '저장 중...' : '저장하기'}
+             확인 (직원 선택으로 이동)
            </button>
         </div>
       </div>

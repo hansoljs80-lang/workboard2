@@ -1,6 +1,6 @@
 
 export const SUPABASE_SCHEMA_SQL = `
--- 물리치료실 업무 보드 Supabase 초기화 스크립트 (v20 - Consumables Reorder Threshold)
+-- 물리치료실 업무 보드 Supabase 초기화 스크립트 (v21 - Equipment & Consumable Logs)
 -- Supabase 대시보드 > SQL Editor에 복사하여 실행하세요.
 
 -- 1. UUID 확장 기능 활성화 (필수)
@@ -107,14 +107,9 @@ create table if not exists public.consumables (
     category text,
     count integer default 0,
     unit text default '개',
-    
-    -- [Added for v19] Pack Unit Support
     items_per_pack integer default 1,
     pack_unit text,
-    
-    -- [Added for v20] Reorder Threshold
     min_count integer default 0,
-
     vendor_name text,
     vendor_phone text,
     note text,
@@ -122,12 +117,17 @@ create table if not exists public.consumables (
     updated_at timestamptz default now()
 );
 
--- [Fix] Ensure columns exist
-alter table public.consumables add column if not exists items_per_pack integer default 1;
-alter table public.consumables add column if not exists pack_unit text;
-alter table public.consumables add column if not exists min_count integer default 0;
+-- [New] CONSUMABLE LOGS (소모품 이력)
+create table if not exists public.consumable_logs (
+    id text default uuid_generate_v4()::text primary key,
+    item_name text not null,
+    action_type text not null, -- CREATE, UPDATE, DELETE, STOCK
+    changes text, -- Description of changes
+    performed_by jsonb default '[]'::jsonb,
+    created_at timestamptz default now()
+);
 
--- 12. EQUIPMENTS (장비 관리) 테이블 (New)
+-- 12. EQUIPMENTS (장비 관리) 테이블
 create table if not exists public.equipments (
     id text default uuid_generate_v4()::text primary key,
     name text not null,
@@ -138,6 +138,16 @@ create table if not exists public.equipments (
     note text,
     created_at timestamptz default now(),
     updated_at timestamptz default now()
+);
+
+-- [New] EQUIPMENT LOGS (장비 이력)
+create table if not exists public.equipment_logs (
+    id text default uuid_generate_v4()::text primary key,
+    item_name text not null,
+    action_type text not null, -- CREATE, UPDATE, DELETE, COUNT
+    changes text, -- Description of changes
+    performed_by jsonb default '[]'::jsonb,
+    created_at timestamptz default now()
 );
 
 -- 13. 인덱스 설정 (성능 최적화)
@@ -152,6 +162,8 @@ create index if not exists idx_pt_room_logs_created_at on public.pt_room_logs(cr
 create index if not exists idx_changing_room_logs_created_at on public.changing_room_logs(created_at);
 create index if not exists idx_consumables_category on public.consumables(category);
 create index if not exists idx_equipments_category on public.equipments(category);
+create index if not exists idx_consumable_logs_created_at on public.consumable_logs(created_at);
+create index if not exists idx_equipment_logs_created_at on public.equipment_logs(created_at);
 
 -- 14. 초기 관리자 계정 생성
 insert into public.staff (name, role, color, is_active)
@@ -170,6 +182,8 @@ alter table public.pt_room_logs enable row level security;
 alter table public.changing_room_logs enable row level security;
 alter table public.consumables enable row level security;
 alter table public.equipments enable row level security;
+alter table public.consumable_logs enable row level security;
+alter table public.equipment_logs enable row level security;
 
 -- 기존 정책 삭제 (중복 방지)
 drop policy if exists "Enable all access for all users" on public.staff;
@@ -183,6 +197,8 @@ drop policy if exists "Enable all access for all users" on public.pt_room_logs;
 drop policy if exists "Enable all access for all users" on public.changing_room_logs;
 drop policy if exists "Enable all access for all users" on public.consumables;
 drop policy if exists "Enable all access for all users" on public.equipments;
+drop policy if exists "Enable all access for all users" on public.consumable_logs;
+drop policy if exists "Enable all access for all users" on public.equipment_logs;
 
 -- 새 정책 생성
 create policy "Enable all access for all users" on public.staff for all using (true) with check (true);
@@ -196,6 +212,8 @@ create policy "Enable all access for all users" on public.pt_room_logs for all u
 create policy "Enable all access for all users" on public.changing_room_logs for all using (true) with check (true);
 create policy "Enable all access for all users" on public.consumables for all using (true) with check (true);
 create policy "Enable all access for all users" on public.equipments for all using (true) with check (true);
+create policy "Enable all access for all users" on public.consumable_logs for all using (true) with check (true);
+create policy "Enable all access for all users" on public.equipment_logs for all using (true) with check (true);
 
 -- 권한 부여 (Permission Grant)
 grant all on table public.staff to anon, authenticated, service_role;
@@ -209,6 +227,8 @@ grant all on table public.pt_room_logs to anon, authenticated, service_role;
 grant all on table public.changing_room_logs to anon, authenticated, service_role;
 grant all on table public.consumables to anon, authenticated, service_role;
 grant all on table public.equipments to anon, authenticated, service_role;
+grant all on table public.consumable_logs to anon, authenticated, service_role;
+grant all on table public.equipment_logs to anon, authenticated, service_role;
 
 NOTIFY pgrst, 'reload schema';
 `;
