@@ -7,6 +7,7 @@ import StatusOverlay, { OperationStatus } from './StatusOverlay';
 import EquipmentCard from './equipment/EquipmentCard';
 import EquipmentFormModal from './equipment/EquipmentFormModal';
 import { SUPABASE_SCHEMA_SQL } from '../constants/supabaseSchema';
+import { useDebounce } from '../hooks/useDebounce';
 
 const EquipmentManager: React.FC = () => {
   const [items, setItems] = useState<Equipment[]>([]);
@@ -17,6 +18,7 @@ const EquipmentManager: React.FC = () => {
 
   // Filter & Search
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [categoryFilter, setCategoryFilter] = useState('ALL');
 
   // Modal State
@@ -102,12 +104,13 @@ const EquipmentManager: React.FC = () => {
 
   const filteredItems = useMemo(() => {
     return items.filter(item => {
-      const matchSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          (item.vendorName && item.vendorName.toLowerCase().includes(searchQuery.toLowerCase()));
+      const query = debouncedSearchQuery.toLowerCase();
+      const matchSearch = item.name.toLowerCase().includes(query) || 
+                          (item.vendorName && item.vendorName.toLowerCase().includes(query));
       const matchCategory = categoryFilter === 'ALL' || item.category === categoryFilter;
       return matchSearch && matchCategory;
     });
-  }, [items, searchQuery, categoryFilter]);
+  }, [items, debouncedSearchQuery, categoryFilter]);
 
   return (
     <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 p-4 md:p-6 pb-6 overflow-hidden">
@@ -179,7 +182,9 @@ const EquipmentManager: React.FC = () => {
         ) : filteredItems.length === 0 ? (
            <div className="flex flex-col items-center justify-center h-64 text-slate-400">
               <Monitor size={48} className="mb-3 opacity-20" />
-              <p>등록된 장비가 없습니다.</p>
+              <p>
+                {debouncedSearchQuery ? '검색 결과가 없습니다.' : '등록된 장비가 없습니다.'}
+              </p>
            </div>
         ) : (
            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">

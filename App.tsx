@@ -1,20 +1,24 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { Database } from 'lucide-react';
-import StaffManager from './components/StaffManager';
-import Settings from './components/Settings';
-import GeneralSettings from './components/GeneralSettings';
-import BedManager from './components/BedManager';
-import LaundryManager from './components/LaundryManager'; 
-import ShockwaveManager from './components/ShockwaveManager'; 
-import PtRoomManager from './components/PtRoomManager'; 
-import ChangingRoomManager from './components/ChangingRoomManager';
-import ConsumablesManager from './components/ConsumablesManager';
-import EquipmentManager from './components/EquipmentManager';
 import Layout from './components/Layout';
+import PageLoader from './components/common/PageLoader';
 import { useAppData } from './hooks/useAppData';
 import { Tab } from './types';
 import { useUI } from './context/UIContext';
+
+// --- Code Splitting (Lazy Loading) ---
+// 각 탭의 컴포넌트를 필요할 때만 불러오도록 분리합니다.
+const PtRoomManager = React.lazy(() => import('./components/PtRoomManager'));
+const ShockwaveManager = React.lazy(() => import('./components/ShockwaveManager'));
+const BedManager = React.lazy(() => import('./components/BedManager'));
+const LaundryManager = React.lazy(() => import('./components/LaundryManager'));
+const ChangingRoomManager = React.lazy(() => import('./components/ChangingRoomManager'));
+const ConsumablesManager = React.lazy(() => import('./components/ConsumablesManager'));
+const EquipmentManager = React.lazy(() => import('./components/EquipmentManager'));
+const StaffManager = React.lazy(() => import('./components/StaffManager'));
+const GeneralSettings = React.lazy(() => import('./components/GeneralSettings'));
+const Settings = React.lazy(() => import('./components/Settings'));
 
 const App: React.FC = () => {
   // Default to PT Room as requested
@@ -38,7 +42,7 @@ const App: React.FC = () => {
   const renderContent = () => {
     if (!isConfigured && activeTab !== Tab.SETTINGS && activeTab !== Tab.GENERAL_SETTINGS) {
       return (
-        <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+        <div className="flex flex-col items-center justify-center h-full p-8 text-center animate-fade-in">
           <Database size={48} className="text-slate-300 dark:text-slate-600 mb-4" />
           <h2 className="text-xl font-bold text-slate-700 dark:text-slate-300 mb-2">DB 설정이 필요합니다</h2>
           <p className="text-slate-500 dark:text-slate-400 mb-6">앱을 사용하기 위해 Google Sheet 연동 설정이 필요합니다.</p>
@@ -52,50 +56,44 @@ const App: React.FC = () => {
       );
     }
 
-    switch (activeTab) {
-      case Tab.PT_ROOM:
-        return (
-          <PtRoomManager staff={staff} />
-        );
-      case Tab.SHOCKWAVE:
-        return (
-          <ShockwaveManager staff={staff} />
-        );
-      case Tab.BEDS:
-        return (
-          <BedManager 
-            staff={staff} 
-            tasks={tasks} // Pass tasks for synchronization
-            settings={settings} 
-            onRefresh={loadData} 
-            onNavigateToBoard={() => {}}
-          />
-        );
-      case Tab.LAUNDRY:
-        return (
-          <LaundryManager staff={staff} />
-        );
-      case Tab.CHANGING_ROOM:
-        return (
-          <ChangingRoomManager staff={staff} />
-        );
-      case Tab.CONSUMABLES:
-        return (
-          <ConsumablesManager />
-        );
-      case Tab.EQUIPMENT:
-        return (
-          <EquipmentManager />
-        );
-      case Tab.STAFF:
-        return <StaffManager staffList={staff} tasks={tasks} templates={templates} onRefresh={loadData} />;
-      case Tab.GENERAL_SETTINGS:
-        return <GeneralSettings />;
-      case Tab.SETTINGS:
-        return <Settings onRefresh={loadData} />;
-      default:
-        return null;
-    }
+    return (
+      <Suspense fallback={<PageLoader />}>
+        {(() => {
+          switch (activeTab) {
+            case Tab.PT_ROOM:
+              return <PtRoomManager staff={staff} />;
+            case Tab.SHOCKWAVE:
+              return <ShockwaveManager staff={staff} />;
+            case Tab.BEDS:
+              return (
+                <BedManager 
+                  staff={staff} 
+                  tasks={tasks}
+                  settings={settings} 
+                  onRefresh={loadData} 
+                  onNavigateToBoard={() => {}}
+                />
+              );
+            case Tab.LAUNDRY:
+              return <LaundryManager staff={staff} />;
+            case Tab.CHANGING_ROOM:
+              return <ChangingRoomManager staff={staff} />;
+            case Tab.CONSUMABLES:
+              return <ConsumablesManager />;
+            case Tab.EQUIPMENT:
+              return <EquipmentManager />;
+            case Tab.STAFF:
+              return <StaffManager staffList={staff} tasks={tasks} templates={templates} onRefresh={loadData} />;
+            case Tab.GENERAL_SETTINGS:
+              return <GeneralSettings />;
+            case Tab.SETTINGS:
+              return <Settings onRefresh={loadData} />;
+            default:
+              return null;
+          }
+        })()}
+      </Suspense>
+    );
   };
 
   return (

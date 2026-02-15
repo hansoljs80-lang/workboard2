@@ -1,4 +1,5 @@
-const CACHE_NAME = 'pt-board-v5';
+
+const CACHE_NAME = 'pt-board-v6';
 const urlsToCache = [
   './',
   './index.html',
@@ -31,13 +32,21 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
+  // Ignore Supabase/API requests
   if (event.request.url.includes('supabase.co')) {
     return;
   }
 
-  if (event.request.mode === 'navigate') {
+  // Network-First for HTML/Navigations (To ensure fresh updates)
+  if (event.request.mode === 'navigate' || event.request.destination === 'document') {
     event.respondWith(
       fetch(event.request)
+        .then(response => {
+          return caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, response.clone());
+            return response;
+          });
+        })
         .catch(() => {
           return caches.match(event.request);
         })
@@ -45,13 +54,19 @@ self.addEventListener('fetch', event => {
     return;
   }
 
+  // Stale-While-Revalidate for other assets (CSS, JS, Images)
   event.respondWith(
     caches.match(event.request)
-      .then(response => {
-        if (response) {
-          return response;
-        }
-        return fetch(event.request);
+      .then(cachedResponse => {
+        const fetchPromise = fetch(event.request).then(networkResponse => {
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, networkResponse.clone());
+          });
+          return networkResponse;
+        });
+        
+        // Return cached response immediately if available, else fetch
+        return cachedResponse || fetchPromise;
       })
   );
 });
