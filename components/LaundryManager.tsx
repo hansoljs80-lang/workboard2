@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Staff, LaundryLog, LaundryAction } from '../types';
-import { Shirt, Wind, CheckCircle2, History, LayoutGrid, AlertCircle, Database, Waves, ArrowRight, Copy, Filter, Clock, Plus, Trash2 } from 'lucide-react';
+import { Shirt, Wind, CheckCircle2, History, LayoutGrid, AlertCircle, Database, Waves, ArrowRight, Copy, Filter, Clock, Plus, Trash2, List, BarChart3 } from 'lucide-react';
 import StatusOverlay, { OperationStatus } from './StatusOverlay';
 import StaffSelectionModal from './common/StaffSelectionModal';
 import { fetchLaundryLogs, logLaundryAction, deleteLaundryLog } from '../services/laundryService';
@@ -17,6 +17,7 @@ interface LaundryManagerProps {
 
 type TabMode = 'status' | 'history';
 type ViewMode = 'day' | 'week' | 'month';
+type MobileHistoryView = 'LIST' | 'STATS';
 
 const LaundryManager: React.FC<LaundryManagerProps> = ({ staff }) => {
   const [activeTab, setActiveTab] = useState<TabMode>('status');
@@ -35,13 +36,16 @@ const LaundryManager: React.FC<LaundryManagerProps> = ({ staff }) => {
 
   // Filter State
   const [typeFilter, setTypeFilter] = useState<'ALL' | LaundryAction>('ALL');
+  
+  // Mobile History State
+  const [mobileHistoryView, setMobileHistoryView] = useState<MobileHistoryView>('LIST');
 
   // 1. Fetch Logs
   const loadLogs = useCallback(async () => {
     setLoading(true);
     setError('');
     
-    // For Status Tab: Always fetch TODAY's logs (to show current state)
+    // For Status Tab: Always fetch TODAY's logs
     // For History Tab: Fetch based on currentDate & viewMode
     let start = new Date(currentDate);
     let end = new Date(currentDate);
@@ -146,7 +150,6 @@ const LaundryManager: React.FC<LaundryManagerProps> = ({ staff }) => {
 
   // 3. Status View Helpers
   const getTodayLogs = (action: LaundryAction) => {
-    // Return ALL logs for this action today, sorted by time desc
     if (activeTab !== 'status') return []; 
     return logs
       .filter(l => l.actionType === action)
@@ -157,7 +160,6 @@ const LaundryManager: React.FC<LaundryManagerProps> = ({ staff }) => {
     const actionLogs = getTodayLogs(action);
     const hasLogs = actionLogs.length > 0;
     
-    // Changed outer element to div to avoid nesting buttons (since delete button is inside)
     return (
       <div 
         onClick={() => handleStageClick(action)}
@@ -166,18 +168,13 @@ const LaundryManager: React.FC<LaundryManagerProps> = ({ staff }) => {
           ${theme}
         `}
       >
-        {/* Header Icon */}
-        <div className={`
-           p-3 rounded-full mb-2 transition-transform group-hover:scale-110 shadow-sm mt-2
-           bg-white/50
-        `}>
+        <div className={`p-3 rounded-full mb-2 transition-transform group-hover:scale-110 shadow-sm mt-2 bg-white/50`}>
            {icon}
         </div>
         
         <h3 className="text-lg font-bold mb-1">{title}</h3>
         <p className="text-xs opacity-70 mb-4">{description}</p>
 
-        {/* Log List (Timeline) */}
         <div className="flex-1 w-full bg-white/60 dark:bg-black/20 rounded-xl overflow-hidden flex flex-col mb-2 border border-black/5 dark:border-white/5">
            {hasLogs ? (
              <div className="overflow-y-auto custom-scrollbar flex-1 max-h-[120px] p-2 space-y-1">
@@ -210,7 +207,6 @@ const LaundryManager: React.FC<LaundryManagerProps> = ({ staff }) => {
              </div>
            )}
            
-           {/* Add Hint */}
            <div className="p-2 text-[10px] font-bold bg-black/5 dark:bg-white/5 text-center flex items-center justify-center gap-1">
               <Plus size={10} /> 터치하여 기록 추가
            </div>
@@ -274,8 +270,6 @@ const LaundryManager: React.FC<LaundryManagerProps> = ({ staff }) => {
       FOLD: {}
     };
 
-    // Note: We use 'logs' (full dataset) instead of 'filteredLogs' 
-    // to always show correct leaders even when filtering the list.
     logs.forEach(log => {
       const type = log.actionType;
       if (counts[type]) {
@@ -412,69 +406,103 @@ const LaundryManager: React.FC<LaundryManagerProps> = ({ staff }) => {
            </div>
         </div>
       ) : (
-        <div className="flex-1 overflow-hidden flex flex-col md:flex-row gap-4 animate-fade-in">
-           {/* Sidebar: Stats */}
-           <div className="w-full md:w-80 shrink-0 h-64 md:h-full md:order-1 order-1">
+        <div className="flex-1 overflow-hidden flex flex-col md:flex-row animate-fade-in gap-0 md:gap-4">
+           {/* Top Controls for History */}
+           <div className="bg-white dark:bg-slate-900 p-4 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm mb-4 md:mb-0 shrink-0">
+              <div className="flex flex-col gap-3">
+                 <div className="flex justify-between items-center">
+                    <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
+                        {['day', 'week', 'month'].map((mode) => (
+                        <button 
+                            key={mode}
+                            onClick={() => setViewMode(mode as ViewMode)}
+                            className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${viewMode === mode ? 'bg-white dark:bg-slate-600 text-indigo-600 dark:text-white shadow-sm' : 'text-slate-500'}`}
+                        >
+                            {{'day': '일간', 'week': '주간', 'month': '월간'}[mode]}
+                        </button>
+                        ))}
+                    </div>
+                    <DateNavigator 
+                        currentDate={currentDate} 
+                        viewMode={viewMode} 
+                        onNavigate={(dir) => {
+                        setCurrentDate(prev => {
+                            const next = new Date(prev);
+                            if (viewMode === 'day') next.setDate(prev.getDate() + (dir === 'next' ? 1 : -1));
+                            else if (viewMode === 'week') next.setDate(prev.getDate() + (dir === 'next' ? 7 : -7));
+                            else next.setMonth(prev.getMonth() + (dir === 'next' ? 1 : -1));
+                            return next;
+                        });
+                        }}
+                    />
+                 </div>
+
+                 {/* Type Filter */}
+                 <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
+                    <div className="flex items-center gap-1.5 px-2 text-xs font-bold text-slate-500 whitespace-nowrap">
+                        <Filter size={14} /> 필터:
+                    </div>
+                    {['ALL', 'WASH', 'DRY', 'FOLD'].map((type) => {
+                        let label = '전체 보기';
+                        if (type === 'WASH') label = '세탁';
+                        if (type === 'DRY') label = '건조';
+                        if (type === 'FOLD') label = '정리';
+                        
+                        return (
+                            <button
+                                key={type}
+                                onClick={() => setTypeFilter(type as any)}
+                                className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${
+                                    typeFilter === type 
+                                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' 
+                                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50'
+                                }`}
+                            >
+                                {label}
+                            </button>
+                        );
+                    })}
+                 </div>
+
+                 {/* Mobile View Toggle */}
+                 <div className="md:hidden flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <button
+                        onClick={() => setMobileHistoryView('LIST')}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-xs font-bold transition-all ${
+                            mobileHistoryView === 'LIST' 
+                            ? 'bg-white dark:bg-slate-600 text-slate-900 dark:text-white shadow-sm' 
+                            : 'text-slate-500'
+                        }`}
+                    >
+                        <List size={14} /> 목록 ({groupedLogs.length})
+                    </button>
+                    <button
+                        onClick={() => setMobileHistoryView('STATS')}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-xs font-bold transition-all ${
+                            mobileHistoryView === 'STATS' 
+                            ? 'bg-white dark:bg-slate-600 text-slate-900 dark:text-white shadow-sm' 
+                            : 'text-slate-500'
+                        }`}
+                    >
+                        <BarChart3 size={14} /> 통계/순위
+                    </button>
+                 </div>
+              </div>
+           </div>
+
+           {/* Stats Panel */}
+           <div className={`
+              w-full md:w-80 shrink-0 md:h-full md:order-1 order-1
+              ${mobileHistoryView === 'STATS' ? 'block h-full' : 'hidden md:block'}
+           `}>
               <LaundryStats stats={stats} categoryLeaders={categoryLeaders} loading={loading} />
            </div>
 
            {/* Main: Logs */}
-           <div className="flex-1 overflow-y-auto custom-scrollbar md:order-2 order-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-4">
-              {/* Controls */}
-              <div className="flex justify-between items-center mb-4">
-                 <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
-                    {['day', 'week', 'month'].map((mode) => (
-                      <button 
-                        key={mode}
-                        onClick={() => setViewMode(mode as ViewMode)}
-                        className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${viewMode === mode ? 'bg-white dark:bg-slate-600 text-indigo-600 dark:text-white shadow-sm' : 'text-slate-500'}`}
-                      >
-                        {{'day': '일간', 'week': '주간', 'month': '월간'}[mode]}
-                      </button>
-                    ))}
-                 </div>
-                 <DateNavigator 
-                    currentDate={currentDate} 
-                    viewMode={viewMode} 
-                    onNavigate={(dir) => {
-                       setCurrentDate(prev => {
-                          const next = new Date(prev);
-                          if (viewMode === 'day') next.setDate(prev.getDate() + (dir === 'next' ? 1 : -1));
-                          else if (viewMode === 'week') next.setDate(prev.getDate() + (dir === 'next' ? 7 : -7));
-                          else next.setMonth(prev.getMonth() + (dir === 'next' ? 1 : -1));
-                          return next;
-                       });
-                    }}
-                 />
-              </div>
-
-              {/* Type Filter */}
-              <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
-                 <div className="flex items-center gap-1.5 px-2 text-xs font-bold text-slate-500 whitespace-nowrap">
-                    <Filter size={14} /> 필터:
-                 </div>
-                 {['ALL', 'WASH', 'DRY', 'FOLD'].map((type) => {
-                    let label = '전체 보기';
-                    if (type === 'WASH') label = '세탁';
-                    if (type === 'DRY') label = '건조';
-                    if (type === 'FOLD') label = '정리';
-                    
-                    return (
-                        <button
-                            key={type}
-                            onClick={() => setTypeFilter(type as any)}
-                            className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${
-                                typeFilter === type 
-                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' 
-                                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50'
-                            }`}
-                        >
-                            {label}
-                        </button>
-                    );
-                 })}
-              </div>
-
+           <div className={`
+              flex-1 overflow-y-auto custom-scrollbar md:order-2 order-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-4
+              ${mobileHistoryView === 'LIST' ? 'block' : 'hidden md:block'}
+           `}>
               {loading ? (
                  <div className="py-20 text-center text-slate-400">데이터 불러오는 중...</div>
               ) : groupedLogs.length === 0 ? (
@@ -482,7 +510,7 @@ const LaundryManager: React.FC<LaundryManagerProps> = ({ staff }) => {
                     {typeFilter === 'ALL' ? '기록이 없습니다.' : '선택한 작업의 기록이 없습니다.'}
                  </div>
               ) : (
-                 <div className="space-y-6">
+                 <div className="space-y-6 pb-20 md:pb-0">
                     {groupedLogs.map(group => (
                        <div key={group.date}>
                           <div className="sticky top-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm z-10 py-2 px-1 mb-2 border-b border-slate-100 dark:border-slate-800 font-bold text-slate-600 dark:text-slate-300 text-sm flex items-center gap-2">
