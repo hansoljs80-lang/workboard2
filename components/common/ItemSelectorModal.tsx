@@ -14,6 +14,7 @@ interface ItemSelectorModalProps {
   items: CatalogItem[];
   onConfirm: (selectedItems: CatalogItem[]) => void;
   onUpdateCatalog?: (newItems: CatalogItem[]) => void; // Callback to update master list
+  confirmLabel?: string;
 }
 
 const ItemSelectorModal: React.FC<ItemSelectorModalProps> = ({
@@ -22,7 +23,8 @@ const ItemSelectorModal: React.FC<ItemSelectorModalProps> = ({
   title,
   items,
   onConfirm,
-  onUpdateCatalog
+  onUpdateCatalog,
+  confirmLabel
 }) => {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [newItemText, setNewItemText] = useState('');
@@ -266,11 +268,17 @@ const ItemSelectorModal: React.FC<ItemSelectorModalProps> = ({
            </button>
            <button 
              onClick={handleConfirm}
-             disabled={selectedIds.length === 0}
+             disabled={selectedIds.length === 0 && !confirmLabel}
              className="flex-[2] py-3 bg-blue-600 text-white font-bold rounded-xl shadow-lg hover:bg-blue-700 transition-all active:scale-95 text-sm disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-2"
            >
-             <Plus size={16} />
-             {selectedIds.length}개 리스트에 추가
+             {confirmLabel ? (
+                <span>{confirmLabel}</span>
+             ) : (
+                <>
+                   <Plus size={16} />
+                   {selectedIds.length}개 리스트에 추가
+                </>
+             )}
            </button>
         </div>
       </div>

@@ -301,7 +301,8 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
   };
 
   const renderPeriodicList = () => {
-    const sortedItems = [...config.periodicItems].sort((a, b) => calculateStatus(a).diff - calculateStatus(b).diff);
+    // 정기 항목은 사용자가 설정한 순서대로 표시 (상태별 정렬 제거)
+    const sortedItems = config.periodicItems;
     return (
       <div className="flex flex-col h-full rounded-2xl border-2 border-purple-100 dark:border-purple-900/30 bg-purple-50/30 dark:bg-purple-900/10 overflow-hidden">
          <div className="p-4 border-b border-purple-100 dark:border-purple-900/30 bg-purple-50/50 dark:bg-purple-900/20 flex justify-between items-center">
@@ -313,9 +314,9 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
                 <button 
                     onClick={() => handleAddItemClick('PERIODIC')}
                     className="p-1 rounded-full bg-purple-100 dark:bg-purple-800 hover:bg-purple-200 dark:hover:bg-purple-700 text-purple-600 dark:text-purple-300 transition-colors"
-                    title="항목 추가"
+                    title="항목 추가/순서변경"
                 >
-                    <Plus size={14} />
+                    <Settings size={14} />
                 </button>
                 <span className="text-xs font-bold text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/50 px-2 py-1 rounded-full">
                 총 {sortedItems.length}개
@@ -505,7 +506,7 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
       <ItemSelectorModal
         isOpen={addModeShift !== null}
         onClose={() => setAddModeShift(null)}
-        title="항목 추가 / 관리"
+        title={addModeShift === 'PERIODIC' ? "정기 점검 항목 관리" : "항목 추가 / 관리"}
         items={
             addModeShift === 'MORNING' ? config.morningItems : 
             addModeShift === 'DAILY' ? config.dailyItems : 
@@ -514,6 +515,7 @@ const PtRoomManager: React.FC<PtRoomManagerProps> = ({ staff }) => {
         }
         onConfirm={handleItemsSelected}
         onUpdateCatalog={(newItems) => addModeShift && handleUpdateCatalog(addModeShift, newItems)}
+        confirmLabel={addModeShift === 'PERIODIC' ? "설정 완료" : undefined}
       />
 
       {/* 3. Modal for Staff Select AFTER Item Add (Immediate Save) */}
