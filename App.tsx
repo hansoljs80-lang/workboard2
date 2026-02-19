@@ -79,9 +79,9 @@ const App: React.FC = () => {
             case Tab.CHANGING_ROOM:
               return <ChangingRoomManager staff={staff} />;
             case Tab.CONSUMABLES:
-              return <ConsumablesManager />;
+              return <ConsumablesManager staff={staff} />;
             case Tab.EQUIPMENT:
-              return <EquipmentManager />;
+              return <EquipmentManager staff={staff} />;
             case Tab.STAFF:
               return <StaffManager staffList={staff} tasks={tasks} templates={templates} onRefresh={loadData} />;
             case Tab.GENERAL_SETTINGS:
