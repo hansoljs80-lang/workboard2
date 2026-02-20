@@ -27,12 +27,9 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const { theme, toggleTheme } = useTheme();
 
-  const managementTabs = [Tab.CONSUMABLES, Tab.EQUIPMENT, Tab.STAFF];
-  const settingsTabs = [Tab.GENERAL_SETTINGS, Tab.SETTINGS];
+  const managementTabs = [Tab.CONSUMABLES, Tab.EQUIPMENT, Tab.STAFF, Tab.GENERAL_SETTINGS, Tab.SETTINGS];
   const isManagementActive = managementTabs.includes(activeTab);
-  const isSettingsActive = settingsTabs.includes(activeTab);
   const [managementOpen, setManagementOpen] = useState(isManagementActive);
-  const [settingsOpen, setSettingsOpen] = useState(isSettingsActive);
 
   // Helper to close sidebar on mobile when an item is clicked
   const handleItemClick = (tab: Tab) => {
@@ -55,6 +52,8 @@ const Sidebar: React.FC<SidebarProps> = ({
     { id: Tab.CONSUMABLES, label: '소모품 관리', icon: <Package size={18} /> },
     { id: Tab.EQUIPMENT, label: '장비 관리', icon: <Monitor size={18} /> },
     { id: Tab.STAFF, label: '직원 관리', icon: <Users size={18} /> },
+    { id: Tab.GENERAL_SETTINGS, label: '일반 설정', icon: <SettingsIcon size={18} /> },
+    { id: Tab.SETTINGS, label: 'DB 연결', icon: <Database size={18} /> },
   ];
 
   return (
@@ -143,7 +142,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         </button>
 
         {/* Dropdown items */}
-        <div className={`overflow-hidden transition-all duration-200 ${managementOpen ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'}`}>
+        <div className={`overflow-hidden transition-all duration-200 ${managementOpen ? 'max-h-72 opacity-100' : 'max-h-0 opacity-0'}`}>
           <div className="pl-3 space-y-0.5 pt-0.5 pb-1">
             {managementItems.map((item) => (
               <button
@@ -163,56 +162,6 @@ const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </div>
 
-        {/* Settings dropdown group */}
-        <div className="my-2 border-t border-slate-200 dark:border-slate-800 mx-2"></div>
-
-        <button
-          onClick={() => setSettingsOpen(prev => !prev)}
-          className={`
-            w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all font-medium text-sm
-            ${isSettingsActive
-              ? 'text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800'
-              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800'}
-          `}
-        >
-          <span className="flex items-center gap-3">
-            <SettingsIcon size={20} />
-            설정
-          </span>
-          <ChevronDown
-            size={16}
-            className={`transition-transform duration-200 ${settingsOpen ? 'rotate-180' : ''}`}
-          />
-        </button>
-
-        <div className={`overflow-hidden transition-all duration-200 ${settingsOpen ? 'max-h-28 opacity-100' : 'max-h-0 opacity-0'}`}>
-          <div className="pl-3 space-y-0.5 pt-0.5 pb-1">
-            <button
-              onClick={() => handleItemClick(Tab.GENERAL_SETTINGS)}
-              className={`
-                w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all font-medium text-sm
-                ${activeTab === Tab.GENERAL_SETTINGS
-                  ? 'bg-slate-800 text-white shadow-md'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800'}
-              `}
-            >
-              <SettingsIcon size={18} />
-              일반 설정
-            </button>
-            <button
-              onClick={() => handleItemClick(Tab.SETTINGS)}
-              className={`
-                w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all font-medium text-sm
-                ${activeTab === Tab.SETTINGS
-                  ? 'bg-slate-800 text-white shadow-md'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800'}
-              `}
-            >
-              <Database size={18} />
-              DB 연결
-            </button>
-          </div>
-        </div>
       </div>
 
       {/* Footer / Theme Toggle */}
