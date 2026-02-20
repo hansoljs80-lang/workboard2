@@ -1,6 +1,6 @@
 
 export const SUPABASE_SCHEMA_SQL = `
--- 물리치료실 업무 보드 Supabase 초기화 스크립트 (v22 - Equipment vendorPhone2)
+-- 물리치료실 업무 보드 Supabase 초기화 스크립트 (v23 - Consumable purchaseUrl)
 -- Supabase 대시보드 > SQL Editor에 복사하여 실행하세요.
 
 -- 1. UUID 확장 기능 활성화 (필수)
@@ -112,10 +112,14 @@ create table if not exists public.consumables (
     min_count integer default 0,
     vendor_name text,
     vendor_phone text,
+    purchase_url text, -- 구매 링크
     note text,
     created_at timestamptz default now(),
     updated_at timestamptz default now()
 );
+
+-- [Fix] 기존 테이블에 컬럼이 없을 경우 추가 (이미 실행한 DB 대응)
+alter table public.consumables add column if not exists purchase_url text;
 
 -- [New] CONSUMABLE LOGS (소모품 이력)
 create table if not exists public.consumable_logs (

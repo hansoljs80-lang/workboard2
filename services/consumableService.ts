@@ -14,6 +14,7 @@ const rowToConsumable = (row: any): Consumable => ({
   minCount: row.min_count || 0,
   vendorName: row.vendor_name,
   vendorPhone: row.vendor_phone,
+  purchaseUrl: row.purchase_url,
   note: row.note,
   updatedAt: row.updated_at,
 });
@@ -38,6 +39,7 @@ const consumableToInsertRow = (item: Omit<Consumable, 'id' | 'updatedAt'>) => ({
   min_count: item.minCount,
   vendor_name: item.vendorName,
   vendor_phone: item.vendorPhone,
+  purchase_url: item.purchaseUrl,
   note: item.note,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
@@ -55,6 +57,7 @@ const buildUpdatePayload = (updates: Partial<Consumable>): Record<string, any> =
   if (updates.minCount !== undefined)     payload.min_count = updates.minCount;
   if (updates.vendorName !== undefined)   payload.vendor_name = updates.vendorName;
   if (updates.vendorPhone !== undefined)  payload.vendor_phone = updates.vendorPhone;
+  if (updates.purchaseUrl !== undefined)  payload.purchase_url = updates.purchaseUrl;
   if (updates.note !== undefined)         payload.note = updates.note;
   return payload;
 };

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Consumable } from '../../types';
-import { X, Save, Layers, AlertCircle } from 'lucide-react';
+import { X, Save, Layers, AlertCircle, Link } from 'lucide-react';
 
 interface ConsumableFormModalProps {
   isOpen: boolean;
@@ -21,6 +21,7 @@ const ConsumableFormModal: React.FC<ConsumableFormModalProps> = ({
     unit: '개',
     vendorName: '',
     vendorPhone: '',
+    purchaseUrl: '',
     note: ''
   });
   
@@ -51,6 +52,7 @@ const ConsumableFormModal: React.FC<ConsumableFormModalProps> = ({
         unit: initialData.unit,
         vendorName: initialData.vendorName || '',
         vendorPhone: initialData.vendorPhone || '',
+        purchaseUrl: initialData.purchaseUrl || '',
         note: initialData.note || ''
       });
 
@@ -329,12 +331,24 @@ const ConsumableFormModal: React.FC<ConsumableFormModalProps> = ({
                  </div>
                  <div>
                     <label className="block text-xs text-slate-500 mb-1">전화번호</label>
-                    <input 
-                      type="tel" 
+                    <input
+                      type="tel"
                       value={formData.vendorPhone}
                       onChange={e => setFormData({...formData, vendorPhone: e.target.value})}
                       className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm"
                       placeholder="010-0000-0000"
+                    />
+                 </div>
+                 <div>
+                    <label className="block text-xs text-slate-500 mb-1 flex items-center gap-1">
+                      <Link size={11} /> 구매 링크 (URL)
+                    </label>
+                    <input
+                      type="url"
+                      value={formData.purchaseUrl}
+                      onChange={e => setFormData({...formData, purchaseUrl: e.target.value})}
+                      className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm"
+                      placeholder="https://..."
                     />
                  </div>
               </div>

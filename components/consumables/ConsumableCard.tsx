@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Consumable } from '../../types';
-import { Phone, Edit2, Trash2, Plus, Minus, AlertTriangle, Check } from 'lucide-react';
+import { Phone, Edit2, Trash2, Plus, Minus, AlertTriangle, Check, ShoppingCart } from 'lucide-react';
 
 interface ConsumableCardProps {
   item: Consumable;
@@ -156,6 +156,18 @@ const ConsumableCard: React.FC<ConsumableCardProps> = ({ item, onEdit, onDelete,
                   <span className="text-[10px] text-slate-300 dark:text-slate-600">번호 없음</span>
                 )}
               </div>
+            )}
+
+            {item.purchaseUrl && (
+              <a
+                href={item.purchaseUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-1 w-full py-1 rounded border border-blue-200 dark:border-blue-800/50 bg-blue-50 dark:bg-blue-900/20 text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+              >
+                <ShoppingCart size={10} />
+                구매 링크 바로가기
+              </a>
             )}
 
             {item.note && (

@@ -92,6 +92,7 @@ export interface Consumable {
 
   vendorName?: string;
   vendorPhone?: string;
+  purchaseUrl?: string; // 구매 링크
   note?: string;
   updatedAt: string;
 }
