@@ -327,6 +327,9 @@ const ConsumablesManager: React.FC<ConsumablesManagerProps> = ({ staff = [] }) =
             </div>
           </div>
 
+          {/* Divider */}
+          <hr className="border-slate-100 dark:border-slate-800 mb-4 shrink-0" />
+
           {/* Content */}
           <div className="flex-1 overflow-y-auto custom-scrollbar pb-20">
             {error === 'DATA_TABLE_MISSING' ? (
