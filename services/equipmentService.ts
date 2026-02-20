@@ -2,6 +2,55 @@
 import { getSupabase } from './supabase';
 import { Equipment, EquipmentAction, EquipmentLog } from '../types';
 
+// ── DB row → 앱 타입 매핑 ──────────────────────────────────────────────────
+const rowToEquipment = (row: any): Equipment => ({
+  id: row.id,
+  name: row.name,
+  category: row.category,
+  count: row.count,
+  vendorName: row.vendor_name,
+  vendorPhone: row.vendor_phone,
+  vendorPhone2: row.vendor_phone2,
+  note: row.note,
+  updatedAt: row.updated_at,
+});
+
+const rowToEquipmentLog = (row: any): EquipmentLog => ({
+  id: row.id,
+  itemName: row.item_name,
+  actionType: row.action_type,
+  changes: row.changes,
+  performedBy: row.performed_by || [],
+  createdAt: row.created_at,
+});
+
+// ── 앱 타입 → DB insert payload ───────────────────────────────────────────
+const equipmentToInsertRow = (item: Omit<Equipment, 'id' | 'updatedAt'>) => ({
+  name: item.name,
+  category: item.category,
+  count: item.count,
+  vendor_name: item.vendorName,
+  vendor_phone: item.vendorPhone,
+  vendor_phone2: item.vendorPhone2,
+  note: item.note,
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
+});
+
+// ── 부분 업데이트 payload 빌더 ────────────────────────────────────────────
+const buildUpdatePayload = (updates: Partial<Equipment>): Record<string, any> => {
+  const payload: Record<string, any> = { updated_at: new Date().toISOString() };
+  if (updates.name !== undefined)         payload.name = updates.name;
+  if (updates.category !== undefined)     payload.category = updates.category;
+  if (updates.count !== undefined)        payload.count = updates.count;
+  if (updates.vendorName !== undefined)   payload.vendor_name = updates.vendorName;
+  if (updates.vendorPhone !== undefined)  payload.vendor_phone = updates.vendorPhone;
+  if (updates.vendorPhone2 !== undefined) payload.vendor_phone2 = updates.vendorPhone2;
+  if (updates.note !== undefined)         payload.note = updates.note;
+  return payload;
+};
+
+// ── CRUD ──────────────────────────────────────────────────────────────────
 export const fetchEquipments = async (): Promise<{ success: boolean; data?: Equipment[]; message?: string }> => {
   const supabase = getSupabase();
   if (!supabase) return { success: false, message: 'DB Disconnected' };
@@ -13,19 +62,7 @@ export const fetchEquipments = async (): Promise<{ success: boolean; data?: Equi
       .order('name');
 
     if (error) throw error;
-
-    const items: Equipment[] = (data || []).map((row: any) => ({
-      id: row.id,
-      name: row.name,
-      category: row.category,
-      count: row.count,
-      vendorName: row.vendor_name,
-      vendorPhone: row.vendor_phone,
-      note: row.note,
-      updatedAt: row.updated_at
-    }));
-
-    return { success: true, data: items };
+    return { success: true, data: (data || []).map(rowToEquipment) };
   } catch (e: any) {
     return { success: false, message: e.message };
   }
@@ -36,17 +73,7 @@ export const addEquipment = async (item: Omit<Equipment, 'id' | 'updatedAt'>) =>
   if (!supabase) return { success: false, message: 'DB Disconnected' };
 
   try {
-    const { error } = await supabase.from('equipments').insert({
-      name: item.name,
-      category: item.category,
-      count: item.count,
-      vendor_name: item.vendorName,
-      vendor_phone: item.vendorPhone,
-      note: item.note,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    });
-
+    const { error } = await supabase.from('equipments').insert(equipmentToInsertRow(item));
     if (error) throw error;
     return { success: true };
   } catch (e: any) {
@@ -59,16 +86,10 @@ export const updateEquipment = async (id: string, updates: Partial<Equipment>) =
   if (!supabase) return { success: false, message: 'DB Disconnected' };
 
   try {
-    const dbUpdates: any = { updated_at: new Date().toISOString() };
-    if (updates.name !== undefined) dbUpdates.name = updates.name;
-    if (updates.category !== undefined) dbUpdates.category = updates.category;
-    if (updates.count !== undefined) dbUpdates.count = updates.count;
-    if (updates.vendorName !== undefined) dbUpdates.vendor_name = updates.vendorName;
-    if (updates.vendorPhone !== undefined) dbUpdates.vendor_phone = updates.vendorPhone;
-    if (updates.note !== undefined) dbUpdates.note = updates.note;
-
-    const { error } = await supabase.from('equipments').update(dbUpdates).eq('id', id);
-
+    const { error } = await supabase
+      .from('equipments')
+      .update(buildUpdatePayload(updates))
+      .eq('id', id);
     if (error) throw error;
     return { success: true };
   } catch (e: any) {
@@ -89,6 +110,7 @@ export const deleteEquipment = async (id: string) => {
   }
 };
 
+// ── 로그 ──────────────────────────────────────────────────────────────────
 export const logEquipmentAction = async (
   itemName: string,
   actionType: EquipmentAction,
@@ -102,11 +124,10 @@ export const logEquipmentAction = async (
     const { error } = await supabase.from('equipment_logs').insert({
       item_name: itemName,
       action_type: actionType,
-      changes: changes,
+      changes,
       performed_by: staffIds,
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
     });
-
     if (error) throw error;
     return { success: true };
   } catch (e: any) {
@@ -114,33 +135,23 @@ export const logEquipmentAction = async (
   }
 };
 
-export const fetchEquipmentLogs = async (startDate: Date, endDate: Date): Promise<{ success: boolean; data?: EquipmentLog[]; message?: string }> => {
+export const fetchEquipmentLogs = async (
+  startDate: Date,
+  endDate: Date
+): Promise<{ success: boolean; data?: EquipmentLog[]; message?: string }> => {
   const supabase = getSupabase();
   if (!supabase) return { success: false, message: 'DB Disconnected' };
-
-  const startISO = startDate.toISOString();
-  const endISO = endDate.toISOString();
 
   try {
     const { data, error } = await supabase
       .from('equipment_logs')
       .select('*')
-      .gte('created_at', startISO)
-      .lte('created_at', endISO)
+      .gte('created_at', startDate.toISOString())
+      .lte('created_at', endDate.toISOString())
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-
-    const logs: EquipmentLog[] = (data || []).map((row: any) => ({
-      id: row.id,
-      itemName: row.item_name,
-      actionType: row.action_type,
-      changes: row.changes,
-      performedBy: row.performed_by || [],
-      createdAt: row.created_at
-    }));
-
-    return { success: true, data: logs };
+    return { success: true, data: (data || []).map(rowToEquipmentLog) };
   } catch (e: any) {
     return { success: false, message: e.message };
   }

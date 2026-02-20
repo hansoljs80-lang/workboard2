@@ -16,24 +16,13 @@ const ConsumableCard: React.FC<ConsumableCardProps> = ({ item, onEdit, onDelete,
   useEffect(() => {
     setLocalCount(item.count);
   }, [item.count]);
-  
+
   const isPackMode = !!(item.itemsPerPack && item.itemsPerPack > 1);
   const itemsPerPack = item.itemsPerPack || 1;
   const packUnit = item.packUnit || 'Box';
-
-  // Calculate current pack count based on localCount
   const currentPacks = isPackMode ? parseFloat((localCount / itemsPerPack).toFixed(2)) : 0;
-
-  // Check Low Stock status (based on localCount to give immediate feedback?) 
-  // Or keep it based on saved count? Let's use localCount for visual feedback.
   const isLowStock = item.minCount !== undefined && item.minCount > 0 && localCount <= item.minCount;
-
   const hasChanged = localCount !== item.count;
-
-  // Theme based on stock level
-  const containerClass = isLowStock 
-    ? "bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-800" 
-    : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800";
 
   const handleUpdate = (isAdd: boolean) => {
     const delta = isPackMode ? (isAdd ? itemsPerPack : -itemsPerPack) : (isAdd ? 1 : -1);
@@ -45,133 +34,138 @@ const ConsumableCard: React.FC<ConsumableCardProps> = ({ item, onEdit, onDelete,
   };
 
   return (
-    <div className={`rounded-xl border p-4 shadow-sm hover:shadow-md transition-shadow relative group ${containerClass}`}>
-      
-      {/* Top Section */}
-      <div className="flex justify-between items-start mb-3">
-         <div>
-            <div className="flex gap-2 mb-1">
-                {item.category && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 inline-block">
-                    {item.category}
+    <div className={`rounded-lg border transition-all duration-200 hover:shadow-md relative group overflow-hidden ${
+      isLowStock
+        ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800/60'
+        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700/60'
+    }`}>
+
+      {/* 좌측 색 라인 */}
+      <div className={`absolute top-0 left-0 w-1 h-full ${
+        isLowStock ? 'bg-red-400' : 'bg-indigo-400 dark:bg-indigo-500'
+      }`} />
+
+      <div className="pl-3 pr-2.5 pt-2.5 pb-2.5">
+
+        {/* 헤더 */}
+        <div className="flex items-start justify-between mb-2">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1 mb-1 flex-wrap">
+              {item.category && (
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 tracking-wide uppercase">
+                  {item.category}
                 </span>
-                )}
-                {isLowStock && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-300 flex items-center gap-1">
-                        <AlertTriangle size={10} /> 재구매 필요
-                    </span>
-                )}
+              )}
+              {isLowStock && (
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 flex items-center gap-0.5">
+                  <AlertTriangle size={9} />재구매
+                </span>
+              )}
             </div>
-            <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100 leading-tight">
+            <h3 className="font-bold text-[13px] text-slate-800 dark:text-slate-100 leading-snug truncate pr-1">
               {item.name}
             </h3>
-         </div>
-         
-         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button onClick={() => onEdit(item)} className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-slate-50 dark:hover:bg-slate-800 rounded">
-               <Edit2 size={14} />
-            </button>
-            <button onClick={() => onDelete(item.id)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-slate-50 dark:hover:bg-slate-800 rounded">
-               <Trash2 size={14} />
-            </button>
-         </div>
-      </div>
+          </div>
 
-      {/* Count Control */}
-      <div className={`rounded-xl p-3 flex items-center justify-between mb-3 border transition-colors ${
-        hasChanged 
-          ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800' 
-          : (isLowStock ? 'bg-slate-50 dark:bg-slate-800/50 border-red-100 dark:border-red-900/30' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-700')
-      }`}>
-         <button 
-           onClick={() => handleUpdate(false)}
-           className="w-8 h-8 flex items-center justify-center bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-600 text-slate-500 hover:text-orange-600 hover:border-orange-200 active:scale-95 transition-all"
-           title={isPackMode ? `-1 ${packUnit}` : `-1 ${item.unit}`}
-         >
-           <Minus size={16} />
-         </button>
-         
-         <div className="text-center flex flex-col justify-center min-h-[3rem]">
+          <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-1">
+            <button onClick={() => onEdit(item)} className="p-1 text-slate-400 hover:text-blue-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">
+              <Edit2 size={12} />
+            </button>
+            <button onClick={() => onDelete(item.id)} className="p-1 text-slate-400 hover:text-red-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">
+              <Trash2 size={12} />
+            </button>
+          </div>
+        </div>
+
+        {/* 수량 컨트롤 */}
+        <div className={`flex items-center justify-between rounded border px-2 py-1.5 mb-2 transition-colors ${
+          hasChanged
+            ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700'
+            : isLowStock
+            ? 'bg-red-50/50 border-red-100 dark:bg-red-950/20 dark:border-red-900/40'
+            : 'bg-slate-50 border-slate-100 dark:bg-slate-800/50 dark:border-slate-700/50'
+        }`}>
+          <button
+            onClick={() => handleUpdate(false)}
+            className="w-6 h-6 flex items-center justify-center bg-white dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-600 text-slate-400 hover:text-orange-500 hover:border-orange-300 active:scale-90 transition-all"
+          >
+            <Minus size={11} />
+          </button>
+
+          <div className="text-center">
             {isPackMode ? (
-               <>
-                 <div className="flex items-baseline justify-center gap-1">
-                    <span className={`text-2xl font-black tabular-nums ${hasChanged ? 'text-blue-600 dark:text-blue-400' : (isLowStock ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400')}`}>
-                       {currentPacks}
-                    </span>
-                    <span className="text-sm font-bold text-slate-600 dark:text-slate-300">{packUnit}</span>
-                 </div>
-                 <span className="text-xs text-slate-400 dark:text-slate-500 font-medium mt-[-2px]">
-                    ({localCount.toLocaleString()} {item.unit})
-                 </span>
-               </>
-            ) : (
-               <>
-                 <div className="flex items-baseline justify-center">
-                    <span className={`text-2xl font-black tabular-nums ${hasChanged ? 'text-blue-600 dark:text-blue-400' : (isLowStock ? 'text-red-600 dark:text-red-400' : 'text-slate-800 dark:text-slate-100')}`}>
-                        {localCount}
-                    </span>
-                    <span className="text-xs text-slate-500 dark:text-slate-400 ml-1 font-medium">
-                        {item.unit}
-                    </span>
-                 </div>
-               </>
-            )}
-         </div>
-
-         <button 
-           onClick={() => handleUpdate(true)}
-           className="w-8 h-8 flex items-center justify-center bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-600 text-slate-500 hover:text-blue-600 hover:border-blue-200 active:scale-95 transition-all"
-           title={isPackMode ? `+1 ${packUnit}` : `+1 ${item.unit}`}
-         >
-           <Plus size={16} />
-         </button>
-      </div>
-
-      {/* Threshold Info & Vendor OR Save Button */}
-      {hasChanged ? (
-         <button 
-           onClick={handleSaveCount}
-           className="w-full py-3 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md transition-all active:scale-95 animate-fade-in"
-         >
-           <Check size={18} />
-           <span className="font-bold">수량 변경 저장</span>
-         </button>
-      ) : (
-         <div className="space-y-2 animate-fade-in">
-            {item.minCount && item.minCount > 0 ? (
-                <div className="text-[10px] text-center text-slate-400">
-                   알림 기준: 
-                   {isPackMode 
-                      ? ` ${parseFloat((item.minCount / itemsPerPack).toFixed(2))} ${packUnit} 이하`
-                      : ` ${item.minCount} ${item.unit} 이하`
-                   }
+              <>
+                <div className="flex items-baseline justify-center gap-0.5">
+                  <span className={`text-lg font-black tabular-nums leading-none ${
+                    hasChanged ? 'text-blue-600 dark:text-blue-400' : isLowStock ? 'text-red-500 dark:text-red-400' : 'text-slate-800 dark:text-slate-100'
+                  }`}>{currentPacks}</span>
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400 ml-0.5">{packUnit}</span>
                 </div>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 tabular-nums leading-none">
+                  {localCount.toLocaleString()} {item.unit}
+                </p>
+              </>
+            ) : (
+              <div className="flex items-baseline justify-center gap-0.5">
+                <span className={`text-lg font-black tabular-nums leading-none ${
+                  hasChanged ? 'text-blue-600 dark:text-blue-400' : isLowStock ? 'text-red-500 dark:text-red-400' : 'text-slate-800 dark:text-slate-100'
+                }`}>{localCount}</span>
+                <span className="text-xs font-bold text-slate-500 dark:text-slate-400 ml-0.5">{item.unit}</span>
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={() => handleUpdate(true)}
+            className="w-6 h-6 flex items-center justify-center bg-white dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-600 text-slate-400 hover:text-blue-500 hover:border-blue-300 active:scale-90 transition-all"
+          >
+            <Plus size={11} />
+          </button>
+        </div>
+
+        {/* 하단 */}
+        {hasChanged ? (
+          <button
+            onClick={handleSaveCount}
+            className="w-full py-1.5 flex items-center justify-center gap-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-bold transition-all active:scale-95"
+          >
+            <Check size={12} />저장
+          </button>
+        ) : (
+          <div className="space-y-1">
+            {item.minCount && item.minCount > 0 ? (
+              <p className="text-[10px] text-center text-slate-400 dark:text-slate-500">
+                알림: {isPackMode
+                  ? `${parseFloat((item.minCount / itemsPerPack).toFixed(2))} ${packUnit}`
+                  : `${item.minCount} ${item.unit}`} 이하
+              </p>
             ) : null}
 
             {item.vendorName && (
-              <div className="flex items-center justify-between text-xs bg-white/60 dark:bg-slate-800/60 p-2 rounded-lg border border-slate-100 dark:border-slate-700">
-                 <span className="text-slate-500 font-bold truncate max-w-[50%]">{item.vendorName}</span>
-                 {item.vendorPhone ? (
-                    <a 
-                      href={`tel:${item.vendorPhone}`}
-                      className="flex items-center gap-1 text-green-600 dark:text-green-400 font-bold hover:underline bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-md"
-                    >
-                      <Phone size={10} className="fill-current" />
-                      {item.vendorPhone}
-                    </a>
-                 ) : (
-                    <span className="text-slate-300">전화번호 없음</span>
-                 )}
+              <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800/60 px-2 py-1 rounded border border-slate-100 dark:border-slate-700/50">
+                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 truncate max-w-[55%]">{item.vendorName}</span>
+                {item.vendorPhone ? (
+                  <a
+                    href={`tel:${item.vendorPhone}`}
+                    className="flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 hover:underline"
+                  >
+                    <Phone size={9} className="fill-current" />
+                    {item.vendorPhone}
+                  </a>
+                ) : (
+                  <span className="text-[10px] text-slate-300 dark:text-slate-600">번호 없음</span>
+                )}
               </div>
             )}
-            
+
             {item.note && (
-              <p className="text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/30 p-2 rounded-lg">
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/30 px-1.5 py-1 rounded border border-slate-100 dark:border-slate-700/40 truncate">
                 {item.note}
               </p>
             )}
-         </div>
-      )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

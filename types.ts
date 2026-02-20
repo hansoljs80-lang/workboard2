@@ -115,7 +115,8 @@ export interface Equipment {
   category?: string; // e.g. '치료기기', '운동기구', 'PC/가전'
   count: number;
   vendorName?: string;
-  vendorPhone?: string;
+  vendorPhone?: string;   // 업체 대표 전화
+  vendorPhone2?: string;  // 담당자 직통 전화
   note?: string; // e.g. AS 번호, 모델명, 구매일
   updatedAt: string;
 }

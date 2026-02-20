@@ -1,6 +1,6 @@
 
 export const SUPABASE_SCHEMA_SQL = `
--- 물리치료실 업무 보드 Supabase 초기화 스크립트 (v21 - Equipment & Consumable Logs)
+-- 물리치료실 업무 보드 Supabase 초기화 스크립트 (v22 - Equipment vendorPhone2)
 -- Supabase 대시보드 > SQL Editor에 복사하여 실행하세요.
 
 -- 1. UUID 확장 기능 활성화 (필수)
@@ -134,11 +134,15 @@ create table if not exists public.equipments (
     category text,
     count integer default 1,
     vendor_name text,
-    vendor_phone text,
+    vendor_phone text,   -- 업체 대표 전화
+    vendor_phone2 text,  -- 담당자 직통 전화
     note text,
     created_at timestamptz default now(),
     updated_at timestamptz default now()
 );
+
+-- [Fix] 기존 테이블에 컬럼이 없을 경우 추가 (이미 실행한 DB 대응)
+alter table public.equipments add column if not exists vendor_phone2 text;
 
 -- [New] EQUIPMENT LOGS (장비 이력)
 create table if not exists public.equipment_logs (
