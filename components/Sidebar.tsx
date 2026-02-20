@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { Users, Database, Moon, Sun, Settings as SettingsIcon, RefreshCw, PanelLeftClose, BedDouble, Shirt, Activity, Stethoscope, DoorOpen, Package, Monitor } from 'lucide-react';
+import React, { useState } from 'react';
+import { Users, Database, Moon, Sun, Settings as SettingsIcon, RefreshCw, PanelLeftClose, BedDouble, Shirt, Activity, Stethoscope, DoorOpen, Package, Monitor, ChevronDown } from 'lucide-react';
 import { Tab } from '../types';
 import { useTheme } from '../context/ThemeContext';
 
@@ -15,10 +15,10 @@ interface SidebarProps {
   isConfigured?: boolean;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ 
-  activeTab, 
-  onTabChange, 
-  isOpen = true, 
+const Sidebar: React.FC<SidebarProps> = ({
+  activeTab,
+  onTabChange,
+  isOpen = true,
   onToggle,
   appTitle = "PT Works",
   onRefresh,
@@ -26,6 +26,10 @@ const Sidebar: React.FC<SidebarProps> = ({
   isConfigured = false
 }) => {
   const { theme, toggleTheme } = useTheme();
+
+  const managementTabs = [Tab.CONSUMABLES, Tab.EQUIPMENT, Tab.STAFF];
+  const isManagementActive = managementTabs.includes(activeTab);
+  const [managementOpen, setManagementOpen] = useState(isManagementActive);
 
   // Helper to close sidebar on mobile when an item is clicked
   const handleItemClick = (tab: Tab) => {
@@ -36,15 +40,18 @@ const Sidebar: React.FC<SidebarProps> = ({
     }
   };
 
-  const menuItems = [
+  const mainMenuItems = [
     { id: Tab.PT_ROOM, label: '물리치료실', icon: <Stethoscope size={20} /> },
     { id: Tab.SHOCKWAVE, label: '충격파실', icon: <Activity size={20} /> },
     { id: Tab.BEDS, label: '배드 커버 관리', icon: <BedDouble size={20} /> },
     { id: Tab.LAUNDRY, label: '세탁 관리', icon: <Shirt size={20} /> },
     { id: Tab.CHANGING_ROOM, label: '탈의실 관리', icon: <DoorOpen size={20} /> },
-    { id: Tab.CONSUMABLES, label: '소모품 관리', icon: <Package size={20} /> },
-    { id: Tab.EQUIPMENT, label: '장비 관리', icon: <Monitor size={20} /> },
-    { id: Tab.STAFF, label: '직원 관리', icon: <Users size={20} /> },
+  ];
+
+  const managementItems = [
+    { id: Tab.CONSUMABLES, label: '소모품 관리', icon: <Package size={18} /> },
+    { id: Tab.EQUIPMENT, label: '장비 관리', icon: <Monitor size={18} /> },
+    { id: Tab.STAFF, label: '직원 관리', icon: <Users size={18} /> },
   ];
 
   return (
@@ -60,7 +67,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       md:static md:translate-x-0
       ${isOpen ? 'md:w-64' : 'md:w-0 md:border-none md:overflow-hidden'}
     `}>
-      
+
       {/* Sidebar Header */}
       <div className="flex flex-col gap-4 p-4 mb-2 shrink-0">
          <div className="flex items-center justify-between gap-2">
@@ -71,7 +78,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             </div>
             <div className="flex gap-1 shrink-0">
                {isConfigured && onRefresh && (
-                 <button 
+                 <button
                    onClick={onRefresh}
                    disabled={loading}
                    className={`p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors ${loading ? 'animate-spin text-blue-500' : ''}`}
@@ -80,7 +87,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                    <RefreshCw size={18} />
                  </button>
                )}
-               <button 
+               <button
                  onClick={onToggle}
                  className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors"
                  title="메뉴 닫기"
@@ -93,25 +100,65 @@ const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Menu Items */}
       <div className="flex-1 overflow-y-auto custom-scrollbar px-3 space-y-1">
-        {menuItems.map((item) => (
-          <React.Fragment key={item.id}>
-            {item.id === Tab.CONSUMABLES && (
-              <div className="my-2 border-t border-slate-200 dark:border-slate-800 mx-2" />
-            )}
-            <button
-              onClick={() => handleItemClick(item.id)}
-              className={`
-                w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all font-medium text-sm
-                ${activeTab === item.id
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800'}
-              `}
-            >
-              {item.icon}
-              {item.label}
-            </button>
-          </React.Fragment>
+        {/* Main menu items */}
+        {mainMenuItems.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => handleItemClick(item.id)}
+            className={`
+              w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all font-medium text-sm
+              ${activeTab === item.id
+                ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800'}
+            `}
+          >
+            {item.icon}
+            {item.label}
+          </button>
         ))}
+
+        {/* Management dropdown group */}
+        <div className="my-2 border-t border-slate-200 dark:border-slate-800 mx-2" />
+
+        <button
+          onClick={() => setManagementOpen(prev => !prev)}
+          className={`
+            w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all font-medium text-sm
+            ${isManagementActive
+              ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800'}
+          `}
+        >
+          <span className="flex items-center gap-3">
+            <Package size={20} />
+            관리 메뉴
+          </span>
+          <ChevronDown
+            size={16}
+            className={`transition-transform duration-200 ${managementOpen ? 'rotate-180' : ''}`}
+          />
+        </button>
+
+        {/* Dropdown items */}
+        <div className={`overflow-hidden transition-all duration-200 ${managementOpen ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'}`}>
+          <div className="pl-3 space-y-0.5 pt-0.5 pb-1">
+            {managementItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => handleItemClick(item.id)}
+                className={`
+                  w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all font-medium text-sm
+                  ${activeTab === item.id
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800'}
+                `}
+              >
+                {item.icon}
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div className="my-2 border-t border-slate-200 dark:border-slate-800 mx-2"></div>
 
@@ -119,8 +166,8 @@ const Sidebar: React.FC<SidebarProps> = ({
           onClick={() => handleItemClick(Tab.GENERAL_SETTINGS)}
           className={`
             w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all font-medium text-sm
-            ${activeTab === Tab.GENERAL_SETTINGS 
-              ? 'bg-slate-800 text-white shadow-md' 
+            ${activeTab === Tab.GENERAL_SETTINGS
+              ? 'bg-slate-800 text-white shadow-md'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800'}
           `}
         >
@@ -132,8 +179,8 @@ const Sidebar: React.FC<SidebarProps> = ({
           onClick={() => handleItemClick(Tab.SETTINGS)}
           className={`
             w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all font-medium text-sm
-            ${activeTab === Tab.SETTINGS 
-              ? 'bg-slate-800 text-white shadow-md' 
+            ${activeTab === Tab.SETTINGS
+              ? 'bg-slate-800 text-white shadow-md'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800'}
           `}
         >
