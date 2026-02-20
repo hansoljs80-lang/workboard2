@@ -27,7 +27,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const { theme, toggleTheme } = useTheme();
 
-  const managementTabs = [Tab.CONSUMABLES, Tab.EQUIPMENT, Tab.STAFF, Tab.GENERAL_SETTINGS, Tab.SETTINGS];
+  const managementTabs = [Tab.STAFF, Tab.GENERAL_SETTINGS, Tab.SETTINGS];
   const isManagementActive = managementTabs.includes(activeTab);
   const [managementOpen, setManagementOpen] = useState(isManagementActive);
 
@@ -46,11 +46,11 @@ const Sidebar: React.FC<SidebarProps> = ({
     { id: Tab.BEDS, label: '배드 커버 관리', icon: <BedDouble size={20} /> },
     { id: Tab.LAUNDRY, label: '세탁 관리', icon: <Shirt size={20} /> },
     { id: Tab.CHANGING_ROOM, label: '탈의실 관리', icon: <DoorOpen size={20} /> },
+    { id: Tab.CONSUMABLES, label: '소모품 관리', icon: <Package size={20} /> },
+    { id: Tab.EQUIPMENT, label: '장비 관리', icon: <Monitor size={20} /> },
   ];
 
   const managementItems = [
-    { id: Tab.CONSUMABLES, label: '소모품 관리', icon: <Package size={18} /> },
-    { id: Tab.EQUIPMENT, label: '장비 관리', icon: <Monitor size={18} /> },
     { id: Tab.STAFF, label: '직원 관리', icon: <Users size={18} /> },
     { id: Tab.GENERAL_SETTINGS, label: '일반 설정', icon: <SettingsIcon size={18} /> },
     { id: Tab.SETTINGS, label: 'DB 연결', icon: <Database size={18} /> },
@@ -127,13 +127,13 @@ const Sidebar: React.FC<SidebarProps> = ({
           className={`
             w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all font-medium text-sm
             ${isManagementActive
-              ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20'
+              ? 'text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800'}
           `}
         >
           <span className="flex items-center gap-3">
-            <Package size={20} />
-            관리 메뉴
+            <SettingsIcon size={20} />
+            설정
           </span>
           <ChevronDown
             size={16}
@@ -151,7 +151,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 className={`
                   w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all font-medium text-sm
                   ${activeTab === item.id
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                    ? 'bg-slate-800 text-white shadow-md'
                     : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800'}
                 `}
               >
