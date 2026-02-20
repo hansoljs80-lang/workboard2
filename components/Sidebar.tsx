@@ -94,19 +94,23 @@ const Sidebar: React.FC<SidebarProps> = ({
       {/* Menu Items */}
       <div className="flex-1 overflow-y-auto custom-scrollbar px-3 space-y-1">
         {menuItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => handleItemClick(item.id)}
-            className={`
-              w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all font-medium text-sm
-              ${activeTab === item.id 
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' 
-                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800'}
-            `}
-          >
-            {item.icon}
-            {item.label}
-          </button>
+          <React.Fragment key={item.id}>
+            {item.id === Tab.CONSUMABLES && (
+              <div className="my-2 border-t border-slate-200 dark:border-slate-800 mx-2" />
+            )}
+            <button
+              onClick={() => handleItemClick(item.id)}
+              className={`
+                w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all font-medium text-sm
+                ${activeTab === item.id
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800'}
+              `}
+            >
+              {item.icon}
+              {item.label}
+            </button>
+          </React.Fragment>
         ))}
 
         <div className="my-2 border-t border-slate-200 dark:border-slate-800 mx-2"></div>
