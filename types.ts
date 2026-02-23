@@ -1,91 +1,262 @@
 
-export enum BedStatus {
-  IDLE = 'IDLE',
-  ACTIVE = 'ACTIVE',
-  COMPLETED = 'COMPLETED',
+export enum TaskStatus {
+  TODO = '할일',
+  IN_PROGRESS = '진행중',
+  DONE = '완료',
+  SKIPPED = '건너뜀'
 }
 
-export interface TreatmentStep {
-  id: string;
-  name: string; // e.g., "Hot Pack", "ICT", "Magnetic"
-  label?: string; // Custom display text (e.g. "HP", "ICT")
-  duration: number; // in seconds
-  enableTimer: boolean; // Only true for Hot Pack based on requirements
-  color: string; // visual cue for the step
+export enum Tab {
+  PT_ROOM = 'pt_room',     // 1. 물리치료실 (Default)
+  SHOCKWAVE = 'shockwave', // 2. 충격파실
+  BEDS = 'beds',           // 3. 배드 커버 관리
+  LAUNDRY = 'laundry',     // 4. 세탁 관리
+  CHANGING_ROOM = 'changing_room', // 5. 탈의실 관리
+  CONSUMABLES = 'consumables', // 6. 소모품 관리
+  EQUIPMENT = 'equipment', // 7. 장비 관리
+  STAFF = 'staff',         // 8. 직원 관리
+  SETTINGS = 'settings',
+  GENERAL_SETTINGS = 'general_settings'
 }
 
-export interface QuickTreatment {
+export interface Staff {
   id: string;
-  name: string; // Full name (e.g. "핫팩 (Hot Pack)")
-  label: string; // Button label (e.g. "HP")
-  duration: number; // in minutes (for consistency with editor UI)
-  enableTimer: boolean;
+  name: string;
+  role: string;
   color: string;
-  rank?: number;
+  isActive: boolean;
 }
 
-export interface Preset {
+export type RecurrenceType = 'none' | 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'custom_days';
+
+export interface Task {
   id: string;
-  name: string; // e.g., "Basic"
-  steps: TreatmentStep[];
+  title: string;
+  description: string;
+  status: TaskStatus;
+  assigneeIds: string[];
+  completedBy?: string[];
+  createdAt: string;
+  recurrenceType?: RecurrenceType;
+  recurrenceInterval?: number;
+  sourceTemplateId?: string;
 }
 
-export interface BedState {
+export interface ScheduleConfig {
+  type: RecurrenceType;
+  intervalValue?: number;
+  weekDay?: number;
+  weekDays?: number[];
+  monthDay?: number;
+}
+
+export interface Template {
+  id: string;
+  title: string;
+  description: string;
+  scheduleConfig?: ScheduleConfig;
+  assigneeIds?: string[];
+  isActive: boolean;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface ApiResponse {
+  success: boolean;
+  message?: string;
+  data?: any;
+}
+
+export interface AppData {
+  tasks: Task[];
+  staff: Staff[];
+  templates: Template[];
+  settings?: Record<string, any>;
+}
+
+// --- Consumables Types ---
+
+export interface Consumable {
+  id: string;
+  name: string;
+  category?: string;
+  count: number; // 총 낱개 수량 (DB 저장 기준)
+  unit: string;  // 낱개 단위 (예: 개, ea)
+  
+  // New Fields for Pack Management
+  itemsPerPack?: number; // 묶음 당 낱개 수 (예: 800)
+  packUnit?: string;     // 묶음 단위 명 (예: Box)
+  
+  // Reorder Threshold
+  minCount?: number;     // 최소 유지 수량 (이 값 이하일 때 경고)
+
+  vendorName?: string;
+  vendorPhone?: string;
+  purchaseUrl?: string; // 구매 링크
+  note?: string;
+  updatedAt: string;
+}
+
+export type ConsumableAction = 'CREATE' | 'UPDATE' | 'DELETE' | 'STOCK';
+
+export interface ConsumableLog {
+  id: string;
+  itemName: string;
+  actionType: ConsumableAction;
+  changes: string; // "수량: 10 -> 20"
+  performedBy: string[];
+  createdAt: string;
+}
+
+// --- Equipment Types (New) ---
+
+export interface Equipment {
+  id: string;
+  name: string;
+  category?: string; // e.g. '치료기기', '운동기구', 'PC/가전'
+  count: number;
+  vendorName?: string;
+  vendorPhone?: string;   // 업체 대표 전화
+  vendorPhone2?: string;  // 담당자 직통 전화
+  note?: string; // e.g. AS 번호, 모델명, 구매일
+  updatedAt: string;
+}
+
+export type EquipmentAction = 'CREATE' | 'UPDATE' | 'DELETE' | 'COUNT';
+
+export interface EquipmentLog {
+  id: string;
+  itemName: string;
+  actionType: EquipmentAction;
+  changes: string;
+  performedBy: string[];
+  createdAt: string;
+}
+
+// --- Bed Manager Types ---
+
+export interface BedData {
   id: number;
-  status: BedStatus;
-  currentPresetId: string | null;
-  customPreset?: Preset; // For one-off treatments like Traction with variable timer
-  currentStepIndex: number;
-  queue: number[]; // Array of step indices representing the execution order
-  remainingTime: number; // in seconds
-  startTime: number | null; // Timestamp
-  originalDuration?: number; // Total duration of the current step (for sync)
-  isPaused: boolean;
-  isInjection: boolean; // Tracks if the patient is an injection patient
-  isFluid: boolean; // Tracks if the patient has Fluids (IV)
-  isTraction: boolean; // Tracks if the patient needs traction
-  isESWT: boolean; // Tracks if the patient needs Shockwave (ESWT)
-  isManual: boolean; // Tracks if the patient needs Manual Therapy (Do-su)
-  memos: Record<number, string>; // Map of step index to memo string
-  updatedAt?: string; // ISO String from DB, used for sync conflict resolution
-  lastUpdateTimestamp?: number; // Local-only: timestamp of last user action to debounce server echoes
+  name: string;
+  lastChanged: string | null;
+  lastChangedBy?: string[];
 }
 
-export interface PatientVisit {
+export interface BedConfig {
+  count: number;
+  interval: number;
+  routineDay: number;
+  cols: number;
+}
+
+export type BedStatusLevel = 'success' | 'warning' | 'danger' | 'today';
+
+export interface BedStatus {
+  status: BedStatusLevel;
+  diffDays: number;
+  label: string;
+}
+
+export interface BedLog {
   id: string;
-  visit_date: string; // YYYY-MM-DD
-  bed_id: number | null;
-  patient_name: string;
-  body_part: string;
-  treatment_name: string;
-  memo?: string; // Added memo field
-  author: string;
-  created_at?: string;
-  // Status Flags
-  is_injection?: boolean;
-  is_fluid?: boolean;
-  is_traction?: boolean;
-  is_eswt?: boolean;
-  is_manual?: boolean;
+  bedId: number;
+  bedName: string;
+  actionType: string;
+  performedBy: string[];
+  createdAt: string;
+  note?: string;
 }
 
-export interface AppState {
-  beds: BedState[];
-  presets: Preset[];
-  isMenuOpen: boolean;
-  isDarkMode: boolean;
+// --- Laundry Types ---
+
+export type LaundryAction = 'WASH' | 'DRY' | 'FOLD';
+
+export interface LaundryLog {
+  id: string;
+  actionType: LaundryAction;
+  performedBy: string[];
+  createdAt: string;
 }
 
-// Layout Props Interface reduced to only what's needed for rendering structure
-export interface BedLayoutProps {
-  beds: BedState[];
-  presets: Preset[];
+// --- Shockwave Types ---
+
+export type ShockwaveShift = 'MORNING' | 'DAILY' | 'EVENING';
+
+export interface ShockwaveChecklistItem {
+  id: string;
+  label: string;
+  checked: boolean;
+  performedBy?: string;
 }
 
-export interface SelectPresetOptions {
-  isInjection?: boolean;
-  isFluid?: boolean;
-  isTraction?: boolean;
-  isESWT?: boolean;
-  isManual?: boolean;
+export interface ShockwaveLog {
+  id: string;
+  shiftType: ShockwaveShift;
+  checklist: ShockwaveChecklistItem[];
+  performedBy: string[];
+  createdAt: string;
+}
+
+export interface ShockwaveConfig {
+  morningItems: { id: string; label: string }[];
+  dailyItems: { id: string; label: string }[];
+  eveningItems: { id: string; label: string }[];
+}
+
+// --- PT Room Types ---
+
+export type PtRoomShift = 'MORNING' | 'DAILY' | 'EVENING' | 'PERIODIC';
+
+export interface PtRoomChecklistItem {
+  id: string;
+  label: string;
+  checked: boolean;
+  performedBy?: string;
+}
+
+export interface PtPeriodicItem {
+  id: string;
+  label: string;
+  interval: number;
+  lastCompleted?: string;
+}
+
+export interface PtRoomLog {
+  id: string;
+  shiftType: PtRoomShift;
+  checklist: PtRoomChecklistItem[];
+  performedBy: string[];
+  createdAt: string;
+}
+
+export interface PtRoomConfig {
+  morningItems: { id: string; label: string }[];
+  dailyItems: { id: string; label: string }[];
+  eveningItems: { id: string; label: string }[];
+  periodicItems: PtPeriodicItem[];
+}
+
+// --- Changing Room Types ---
+
+export type ChangingRoomShift = 'MORNING' | 'LUNCH' | 'ADHOC';
+
+export interface ChangingRoomChecklistItem {
+  id: string;
+  label: string;
+  checked: boolean;
+  performedBy?: string;
+}
+
+export interface ChangingRoomLog {
+  id: string;
+  shiftType: ChangingRoomShift;
+  checklist: ChangingRoomChecklistItem[];
+  performedBy: string[];
+  createdAt: string;
+}
+
+export interface ChangingRoomConfig {
+  morningItems: { id: string; label: string }[];
+  lunchItems: { id: string; label: string }[];
+  adhocItems: { id: string; label: string }[];
 }
