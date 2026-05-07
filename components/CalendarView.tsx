@@ -47,7 +47,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
       {/* Header (Days of week) */}
       <div className="grid grid-cols-7 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
         {weekDays.map((day, i) => (
-          <div key={day} className={`py-2 text-center text-xs font-bold ${i === 0 ? 'text-red-500' : 'text-slate-500 dark:text-slate-400'}`}>
+          <div key={day} className={`py-2 text-center text-xs font-bold ${i === 6 ? 'bg-blue-500/10 dark:bg-blue-400/10' : ''} ${i === 0 ? 'text-red-500' : 'text-slate-500 dark:text-slate-400'}`}>
             {day}
           </div>
         ))}
@@ -61,6 +61,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
           
           const isDimmed = viewMode === 'month' && !isSameMonth(date, currentDate);
           const dayIsToday = isSameDay(date, new Date());
+          const isSaturday = date.getDay() === 6;
           
           return (
             <div 
@@ -68,7 +69,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({
               onClick={() => onDateClick(date)}
               className={`
                 border-r border-b border-slate-100 dark:border-slate-800 p-1 flex flex-col transition-colors
-                ${isDimmed ? 'bg-slate-50/50 dark:bg-black/40 text-slate-400' : 'bg-white dark:bg-slate-900'}
+                ${isDimmed ? 'text-slate-400' : ''}
+                ${isSaturday ? 'bg-blue-500/10 dark:bg-blue-400/10' : isDimmed ? 'bg-slate-50/50 dark:bg-black/40' : 'bg-white dark:bg-slate-900'}
                 ${viewMode === 'week' ? 'min-h-[200px]' : 'min-h-[80px]'}
                 hover:bg-blue-50/30 dark:hover:bg-blue-900/10 cursor-pointer
               `}
